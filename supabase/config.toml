@@ -1,0 +1,7 @@
+project_id = "baywatch-bootcamp"
+
+[auth]
+enable_signup = false
+
+[functions.bootcamp]
+verify_jwt = false

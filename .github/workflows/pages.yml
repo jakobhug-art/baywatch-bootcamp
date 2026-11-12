@@ -1,0 +1,42 @@
+name: Publish Baywatch Bootcamp
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: baywatch-pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      BOOTCAMP_SUPABASE_URL: ${{ vars.BOOTCAMP_SUPABASE_URL }}
+      BOOTCAMP_PUBLISHABLE_KEY: ${{ vars.BOOTCAMP_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/build-pages.mjs
+      - name: Verify Supabase guest endpoint
+        run: |
+          curl --fail --silent --show-error --max-time 15 \
+            -H "apikey: $BOOTCAMP_PUBLISHABLE_KEY" \
+            -H 'Origin: https://jakobhug-art.github.io' \
+            "$BOOTCAMP_SUPABASE_URL/functions/v1/bootcamp/state" | \
+            node --input-type=module -e 'const data=JSON.parse(await Array.fromAsync(process.stdin).then(parts=>Buffer.concat(parts).toString())); if(data.user!==null || data.deck?.weekly?.length!==3 || !Array.isArray(data.spins)) process.exit(1);'
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
+        id: deployment

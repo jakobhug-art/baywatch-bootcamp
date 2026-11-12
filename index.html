@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="de">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="theme-color" content="#101017">
+ <meta name="description" content="Tägliche Fitnessübungen und wöchentliche Challenges für deinen Freundeskreis.">
+ <title>Baywatch Bootcamp · Für Jonis Sexy Knackarsch und Sixpack</title>
+ <link rel="stylesheet" href="./style.css">
+ <script src="./app.js" defer></script>
+</head>
+<body>
+ <header class="top"><div class="shell top-inner">
+  <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
+  <nav aria-label="Hauptnavigation">
+   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a>
+  </nav>
+  <button class="outline" id="account">Anmelden</button>
+ </div></header>
+ <main class="shell">
+  <p id="notice" role="status" hidden></p>
+  <section class="hero">
+   <div class="hero-copy"><p class="eyebrow" id="date">DEIN FITNESS-DECK</p>
+    <h1>Jede Wiederholung<br><em>zählt.</em></h1>
+    <p>Für Jonis Sexy Knackarsch und Sixpack</p>
+    <a class="primary" href="#heute">Zur Tageschallenge <span aria-hidden="true">↓</span></a>
+   </div>
+   <div class="art" aria-hidden="true"><div class="orbit"></div><div class="playing back"></div><div class="playing mid"></div><div class="playing face"><span>↗</span><strong>✦</strong><span>↗</span></div></div>
+  </section>
+  <section id="heute" class="section">
+   <div class="section-heading"><div><p class="eyebrow accent">TÄGLICHES TRAINING</p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
+   <p class="sub">Über dem Soll kostet ein Bonuspunkt die vierfache Menge. Pro Übung sind bis zu 25 % Bonus möglich, höchstens bis zum doppelten Soll. Es zählen ganze Punkte.</p>
+   <div id="daily" class="cards daily"></div>
+   <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
+  </section>
+  <section id="gluecksrad" class="section">
+   <div class="section-heading"><h2>Glücks- & Pechrad</h2><span class="pill">Freiwillig · täglich</span></div>
+   <div class="panel wheel-panel">
+    <div class="wheel-frame" aria-hidden="true">
+     <span class="wheel-pointer">▼</span>
+     <div class="wheel-disc" id="wheel-disc"><span>✦</span></div>
+    </div>
+    <div class="wheel-copy">
+     <p>Ein Dreh kann dir <strong>25 Punkte bringen</strong> oder <strong>bis zu 30 kosten</strong>. Extra-Aufgaben kannst du bis Mitternacht abhaken. Die Extrarunde gibt dir 5 Punkte und kann einen zweiten Dreh freischalten.</p>
+     <p id="wheel-lock">Erreiche zuerst alle Ziele der Tageschallenge.</p>
+     <div id="wheel-result" role="status" hidden></div>
+     <button class="primary" type="button" id="wheel-action">Rad drehen</button>
+    </div>
+   </div>
+  </section>
+  <section id="woche" class="section">
+   <div class="section-heading"><div><p class="eyebrow accent pink-text">ABWECHSLUNG</p><h2>Wochen-Challenges</h2></div><span class="pill" id="week-summary">–</span></div>
+   <p class="sub">Drei Extras, jeden Montag ein neues Deck.</p>
+   <div id="weekly" class="cards weekly"></div>
+  </section>
+  <div class="lower">
+   <section id="monat" class="section">
+    <p class="eyebrow accent cyan-text">LANGZEITZIEL</p><h2>Monatsziel</h2>
+    <div id="monthly" class="panel"></div>
+   </section>
+   <section id="rangliste" class="section">
+    <p class="eyebrow accent">FREUNDESKREIS</p><h2>Rangliste</h2>
+    <div class="panel">
+     <div class="segments" aria-label="Zeitraum"><button type="button" data-ranking="seasonRanking" aria-pressed="true">2 Monate</button><button type="button" data-ranking="allTimeRanking" aria-pressed="false">All-Time</button><button type="button" data-ranking="ranking" aria-pressed="false">Woche</button><button type="button" data-ranking="monthlyRanking" aria-pressed="false">Monat</button></div>
+     <p id="season-info" hidden></p>
+     <p id="season-winner" hidden></p>
+     <div id="ranking"></div>
+    </div>
+   </section>
+  </div>
+  <section id="muenzen" class="section">
+   <div class="section-heading"><h2>Münzkonto</h2><span class="pill" id="coin-balance" hidden></span></div>
+   <p class="sub">Beim Glücksrad kannst du 1–3 Münzen oder einen Gutschein für einen freien Tag gewinnen.</p>
+   <button class="outline" type="button" id="coin-login">Anmelden</button>
+   <div id="coin-area" class="lower" hidden>
+    <div class="panel">
+     <h3>Münzen einsetzen</h3>
+     <form id="coin-form">
+      <label>Aktion<select name="kind"><option value="voice">Sprachnachricht · 2 🪙</option><option value="symbol">Symbol-Prank · 5 🪙</option><option value="exercise">Extraübung · 6 🪙</option><option value="rest">Freier Tag · 12 🪙</option></select></label>
+      <label id="coin-target">Person<select name="target"></select></label>
+      <label id="coin-detail" hidden>Auswahl<select name="detail"></select></label>
+      <div id="coin-recording"><button class="outline" type="button" id="coin-record">Aufnehmen (max. 20 Sek.)</button><audio id="coin-preview" controls hidden></audio></div>
+      <p id="rest-info" hidden></p>
+      <button class="primary" type="submit" id="coin-submit">Senden</button>
+     </form>
+     <p id="coin-status" role="status" hidden></p>
+     <details><summary>Münzverlauf</summary><ul id="coin-history"></ul></details>
+    </div>
+    <div class="panel"><h3>Nachrichten & Pranks</h3><div id="coin-inbox"></div></div>
+   </div>
+  </section>
+  <section id="challenge-admin" class="section" hidden>
+   <details class="panel" id="challenge-editor">
+    <summary>Challenges verwalten</summary>
+    <p>Tagesänderungen gelten ab dem nächsten Tag, Wochenänderungen ab der nächsten Auslosung am Montag.</p>
+    <form id="challenge-form">
+     <label>Typ<select name="kind"><option value="daily">Tageschallenge</option><option value="weekly">Wochen-Challenge</option></select></label>
+     <label>Aufgabe<select name="entry"></select></label>
+     <label>Titel<input name="name" maxlength="80" required></label>
+     <label>Anleitung<textarea name="hint" maxlength="300" rows="2"></textarea></label>
+     <fieldset id="challenge-daily">
+      <legend>Tagesziel und Wertung</legend>
+      <label>Einheit<select name="unit"><option>Wdh.</option><option>Sek.</option></select></label>
+      <label>Zielmenge<input name="target" type="number" min="1" max="10000" value="10"></label>
+      <label>Menge pro Punkt<input name="step" type="number" min="1" max="10000" value="1"></label>
+     </fieldset>
+     <fieldset id="challenge-weekly" hidden>
+      <legend>Wochenaufgabe</legend>
+      <label>Kategorie<select name="category"><option>Bewegung</option><option>Ernährung</option><option>Spaß &amp; Abwechslung</option></select></label>
+      <label>Schwierigkeit<select name="difficulty"><option>Leicht</option><option selected>Mittel</option><option>Schwer</option></select></label>
+      <label>Punkte<input name="points" type="number" min="1" max="1000" value="25"></label>
+     </fieldset>
+     <label class="challenge-enabled"><input name="enabled" type="checkbox" checked> Aktiv</label>
+     <button class="primary" type="submit">Aufgabe speichern</button>
+     <p id="challenge-status" role="status" hidden></p>
+    </form>
+   </details>
+   <details class="panel">
+    <summary>Notfall-Reset der Punkte</summary>
+    <p>Setzt alle Punktekonten einschließlich All-Time auf null. Konten, Münzen und bereits abgehakte Aufgaben bleiben erhalten.</p>
+    <form id="points-reset">
+     <label>Bestätigung: PUNKTE RESETTEN<input name="confirm" autocomplete="off" required></label>
+     <label>Dein Admin-Passwort<input type="password" name="password" autocomplete="current-password" maxlength="128" required></label>
+     <button type="submit" class="outline">Alle Punkte zurücksetzen</button>
+     <p id="reset-status" role="status" hidden></p>
+    </form>
+   </details>
+  </section>
+  <section id="feedback" class="section">
+   <div class="section-heading"><div><p class="eyebrow accent pink-text">FEEDBACK</p><h2>Bugs & Ideen</h2></div></div>
+   <div class="panel" id="report-guest"><p>Melde dich an, um einen Fehler oder eine Idee zu melden.</p><button class="outline" id="report-login" type="button">Anmelden</button></div>
+   <div class="lower report-columns" id="report-area" hidden>
+    <div class="panel">
+     <h3>Neue Meldung</h3>
+     <form id="report-form">
+      <label>Kategorie<select name="kind"><option value="bug">Fehler</option><option value="feedback">Feedback oder Idee</option></select></label>
+      <label>Titel<input name="title" minlength="3" maxlength="90" required></label>
+      <label>Beschreibung<textarea name="message" rows="4" minlength="5" maxlength="1500" required></textarea></label>
+      <button class="primary" type="submit">Meldung senden</button>
+     </form>
+    </div>
+    <div class="panel">
+     <div class="section-heading"><h3 id="report-heading">Meine Meldungen</h3><span class="pill" id="report-open" hidden></span></div>
+     <label id="report-filter-label" hidden>Status
+      <select id="report-filter"><option value="all">Alle</option><option value="open">Offen</option><option value="acknowledged">Quittiert</option><option value="resolved">Abgeschlossen</option></select>
+     </label>
+     <p id="report-status" role="status" hidden></p>
+     <div id="report-list"></div>
+    </div>
+   </div>
+  </section>
+ </main>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#muenzen">Münzkonto</a><a href="#feedback">Bugs & Ideen</a><small class="app-version">Version 0.1.2</small></footer>
+ <dialog id="auth">
+  <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
+  <form id="auth-form">
+   <label>Name<input name="handle" autocomplete="username" minlength="2" maxlength="24" required></label>
+   <label>Passwort<input name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" required></label>
+   <label id="invite-label" hidden>Einladungscode<input name="invite" autocomplete="off"></label>
+   <p id="auth-error" role="alert" hidden></p>
+   <button class="primary" id="auth-submit">Anmelden</button>
+   <button class="text-button" id="auth-mode" type="button">Konto erstellen</button>
+  </form>
+ </dialog>
+</body>
+</html>

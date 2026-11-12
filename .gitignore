@@ -1,0 +1,7 @@
+repdeck.sqlite*
+.env
+.env.online-test
+.env.supabase
+repdeck-online.sqlite*
+/dist/
+/supabase/.temp/
