@@ -54,6 +54,13 @@ const extra = [
 const categories=['Bewegung','Ernährung','Spaß & Abwechslung'];
 const colors=['pink','lime','cyan'];
 const icons=['↗','✿','✦'];
+const weeklyPoints={Leicht:55,Mittel:70,Schwer:90};
+const originalWallSit='Sammle insgesamt 90 Sekunden im Wandsitz, auf mehrere Sätze verteilt.';
+const wallSits=[
+ ['pool-0-6','Wandsitz · 240 Sekunden','Sammle insgesamt 240 Sekunden Wandsitz in mehreren Sätzen, etwa 4 × 60 Sekunden.','Schwer'],
+ ['wall-sit-90','Wandsitz · 90 Sekunden','Sammle insgesamt 90 Sekunden Wandsitz, etwa 3 × 30 Sekunden.','Leicht'],
+ ['wall-sit-150','Wandsitz · 150 Sekunden','Sammle insgesamt 150 Sekunden Wandsitz, etwa 3 × 50 Sekunden. Mach zwischen den Sätzen Pause.','Mittel']
+];
 export const weeklyDefaults=[
  ...pools.flatMap((group,index)=>group.map(item=>[...item,categories[index]])),
  ...extra.flatMap(([category,points,items],group)=>items.map(([name,hint],i)=>[`pool-${group}-${i}`,icons[group],name,hint,points,colors[group],category]))
@@ -65,7 +72,24 @@ export function setupChallenges(db,fail){
  `);
  const insert=db.prepare('INSERT OR IGNORE INTO challenge_catalog VALUES(?,?,1,?)');
  for(const item of daily) insert.run(item.id,'daily',JSON.stringify(item));
- for(const [id,,name,hint,points,,category] of weeklyDefaults) insert.run(id,'weekly',JSON.stringify({id,name,hint,points,category,difficulty:'Mittel'}));
+ for(const [id,,name,hint,,,category] of weeklyDefaults){
+  const difficulty=category==='Ernährung'?'Leicht':'Mittel';
+  insert.run(id,'weekly',JSON.stringify({id,name,hint,points:weeklyPoints[difficulty],category,difficulty}));
+ }
+ const updateWallSit=db.prepare(`
+  UPDATE challenge_catalog SET data=?
+  WHERE id=? AND kind='weekly' AND json_extract(data,'$.hint')=?
+ `);
+ for(const [id,name,hint,difficulty] of wallSits){
+  const data=JSON.stringify({id,name,hint,points:weeklyPoints[difficulty],category:categories[0],difficulty});
+  insert.run(id,'weekly',data);
+  if(id==='pool-0-6') updateWallSit.run(data,id,originalWallSit);
+ }
+ const updateWeeklyPoints=db.prepare(`
+  UPDATE challenge_catalog SET data=json_set(data,'$.points',?)
+  WHERE kind='weekly' AND json_extract(data,'$.difficulty')=? AND json_extract(data,'$.points') IS NOT ?
+ `);
+ for(const [difficulty,points] of Object.entries(weeklyPoints)) updateWeeklyPoints.run(points,difficulty,points);
  const catalog=db.prepare('SELECT id,kind,enabled,data FROM challenge_catalog ORDER BY rowid');
  const snapshots=db.prepare('SELECT data FROM challenge_periods WHERE period=? AND kind=?');
  const save=db.prepare('INSERT OR IGNORE INTO challenge_periods VALUES(?,?,?)');
@@ -94,7 +118,7 @@ export function setupChallenges(db,fail){
     return [item.id,icons[index],item.name,item.hint,item.points,colors[index],category,item.difficulty];
    });
   });
-  return {...calendar,daily:dailyCards,weekly:weeklyCards};
+  return {...calendar,daily:dailyCards,weekly:weeklyCards,weeklyPoints};
  }
  function update(input){
   const {id,kind,enabled}=input||{};
@@ -111,9 +135,9 @@ export function setupChallenges(db,fail){
    Object.assign(item,{target,step,unit,icon:existing?.icon||'squat',color:existing?.color||'lime'});
    if(!enabled&&!entries.some(row=>row.kind===kind&&row.enabled&&row.id!==id)) fail(400,'Mindestens eine Tagesübung muss aktiv bleiben.');
   } else {
-   const {points,category,difficulty}=input;
-   if(!hint||!categories.includes(category)||!['Leicht','Mittel','Schwer'].includes(difficulty)||!Number.isInteger(points)||points<1||points>1000) fail(400,'Prüfe Kategorie, Schwierigkeit, Punkte und Aufgabenbeschreibung.');
-   Object.assign(item,{points,category,difficulty});
+   const {category,difficulty}=input;
+   if(!hint||!categories.includes(category)||!Object.hasOwn(weeklyPoints,difficulty)) fail(400,'Prüfe Kategorie, Schwierigkeit und Aufgabenbeschreibung.');
+   Object.assign(item,{points:weeklyPoints[difficulty],category,difficulty});
    for(const group of categories){
     if(!(enabled&&category===group)&&!entries.some(row=>row.kind===kind&&row.category===group&&row.enabled&&row.id!==id)) fail(400,'In jeder Wochenkategorie muss eine Aufgabe aktiv bleiben.');
    }

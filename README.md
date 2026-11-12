@@ -2,7 +2,7 @@
 
 Die sichtbare Versionsnummer steht in der Fußzeile von `index.html`. Erhöhe bei jedem kleinen App-Update die letzte Stelle, etwa von `0.1.0` auf `0.1.1`.
 
-Eine private Fitness-Challenge für einen Freundeskreis. Alle Teilnehmer sehen dieselben Ziele. Einträge und Rangliste werden geräteübergreifend in SQLite gespeichert.
+Eine private Fitness-Challenge für einen Freundeskreis. Die veröffentlichte App verwendet Supabase. Lokal läuft sie mit Node und SQLite.
 
 ## Lokal starten
 
@@ -30,7 +30,7 @@ Der mitgelieferte Dockerfile startet die App als einzelner Node-Dienst. Der Host
 
 Die Login-Seite ist über die URL aufrufbar. Registrierung, Einträge und gemeinsame Ranglisten sind durch Einladung und Sitzung geschützt. Ein geänderter Einladungscode gilt für neue Registrierungen.
 
-## Meldungen und Admin-Zugang
+## Meldungen und lokaler Admin-Zugang
 
 Unter **Bugs & Ideen** können angemeldete Mitglieder Fehler, Feedback und Ideen einreichen und den Status ihrer eigenen Meldungen sehen. Admins sehen alle Meldungen im Postfach und können sie quittieren, abschließen oder wieder öffnen.
 
@@ -42,18 +42,10 @@ node server.mjs --grant-admin DeinName
 
 In Docker lautet der Befehl `docker exec <containername> node server.mjs --grant-admin DeinName`. Lade danach die App neu. Unter **Bugs & Ideen** erscheint das **Admin-Postfach**. Der normale Einladungscode erstellt ausschließlich Mitgliedskonten.
 
-## Wertung
+## Regeln und Wartung
 
-Die Hauptwertung läuft in festen Zweimonatsrunden, beginnend mit Januar und Februar. Die nächste Runde beginnt am ersten Tag des nächsten Zweimonatsblocks um 00:00 Uhr in Berlin. Die vorige Runde zeigt Platz 1 für den Döner der Gruppe. Bei Gleichstand werden alle Erstplatzierten angezeigt. All-Time zählt über die Runden hinweg.
+Die aktuellen Spielregeln für die veröffentlichte App stehen im Info-Bereich. Für den Wochenpool und die Wochenpunkte ist Supabase maßgeblich. Die Funktion `bootcamp_private.weekly_points` definiert die Staffel. Katalog und Admin-Editor verwenden sie, und die Oberfläche liest die Werte aus dem aktuellen Spielstand. Bereits ausgeloste Wochen und verbuchte Punkte sind als eigene Daten gespeichert.
 
-Unter **Challenges verwalten → Notfall-Reset der Punkte** kann ein Admin mit dem eigenen Passwort und der Eingabe `PUNKTE RESETTEN` alle laufenden Punktekonten einschließlich All-Time zurücksetzen. Konten, Münzen und Aufgabenfortschritt bleiben erhalten. Der Reset wird mit Datum und Admin gespeichert.
-
-- Jeden Tag dieselben fünf klassischen Übungen mit Zielwerten von 10 Liegestützen, 30 Plank-Sekunden, 3 Klimmzügen, 15 Bauchaufzügen und 15 Kniebeugen. Tagesmengen lassen sich erhöhen und korrigieren.
-- In der Online-App bringt jedes Tagesziel 60 Punkte. Teilfortschritt zählt proportional. Die Bonuswertung läuft mit einem Viertel des normalen Satzes bis zum doppelten Soll und bringt maximal 15 Zusatzpunkte je Übung. Bruchteile werden abgerundet. Nach Tagesende werden ab Einführung der Regel 10 Punkte pro fehlendem Ziel abgezogen. Ein freier Tag zählt als erfüllt.
-- Jeden Montag um 00:00 Uhr wechselt die App auf drei zufällig gezogene Wochenaufgaben, eine aus jeder Kategorie. Um 00:00 Uhr beginnt jeweils die neue Tageschallenge. Die App speichert Aufgaben, Fortschritt und Punkte pro Zeitraum. Die Auswahl wird beim ersten Aufruf im jeweiligen Zeitraum gespeichert.
-- Unter **Challenges verwalten** können Admins Ziele, Wertung und Anleitung ändern, neue Übungen oder Wochenaufgaben anlegen und Einträge deaktivieren. Tagesänderungen gelten ab dem nächsten Tag, Änderungen am Wochenpool ab der nächsten Montagsauslosung.
-- Das freiwillige Glücks- & Pechrad öffnet sich nach allen fünf Tageszielen. Die Extrarunde bringt 5 Punkte und beim ersten Dreh einen Bonusdreh. Pro Tag sind maximal zwei Drehs möglich. Direkte Gewinne und Abzüge zählen sofort. Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung holst du dir die 30 abgezogenen Punkte zurück, wenn du die Aufgabe erledigst. Beide Drehs zählen zu den Tagespunkten und beiden Ranglisten.
-- Jeder Dreh hat zusätzlich eine Chance von eins zu drei auf 1–3 Münzen. Das Feld **Freier Tag** gibt einen Gutschein fürs Münzkonto. Du kannst ihn für den aktuellen Tag einlösen oder aufheben.
-- Im Münzkonto kosten Sprachnachrichten 2 Münzen, Symbol-Pranks 5, Extraübungen 6, Retourkutschen 4 und ein freier Tag 12. Ein freier Tag ergänzt fehlende Zielpunkte, zählt fürs Monatsziel und öffnet das Rad. Die Mikrofonaufnahme läuft auf HTTPS oder localhost mit Mikrofonfreigabe.
-- Zwölf vollständige Trainingstage im Kalendermonat bringen 100 Punkte für die Monatsrangliste. Wochenaufgaben zählen dort zum Monat ihres Startmontags.
-- Alle Wechsel folgen **Europe/Berlin**. Einträge basieren auf Selbstauskunft. Die Gruppe kann zu Beginn gemeinsame Regeln für Übungsvarianten vereinbaren.
+- `app.js` verbindet die App-Ansichten mit der API. `media-admin.mjs` verwaltet die ZIP-Sicherungen und das anschließende Löschen. `season-media.mjs` erstellt ZIP-Dateien und verkleinert Workout-Fotos.
+- Neue Änderungen für Supabase gehören in eine neue Migration. Der lokale SQLite-Modus hat einen eigenen Aufgabenkatalog in `challenges.mjs` und deckt einen Teil der Online-Funktionen ab.
+- Der Pages-Build versieht die JavaScript-Dateien und ihre Modulimporte mit der App-Version aus der Fußzeile.

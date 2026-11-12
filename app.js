@@ -63,11 +63,7 @@ const dailyTerms = {
  situp:'Bauchaufzug',
  squat:'Kniebeuge'
 };
-const weeklyDifficulty={
- Leicht:{label:'Einfach',points:45},
- Mittel:{label:'Mittel',points:60},
- Schwer:{label:'Schwierig',points:75}
-};
+const weeklyDifficulty={Leicht:'Einfach',Mittel:'Mittel',Schwer:'Schwierig'};
 
 function estimatedPoints(card,amount){
  const extra=Math.min(Math.max(amount-card.target,0),card.target);
@@ -276,6 +272,11 @@ function render() {
  $('#daily-extra').textContent=extras.length>1?extras.length+' offene Extraübungen · Ansehen'
   :extras.length?'Extraübung für heute: '+extras[0].detail+' · Ansehen':'';
  $('#week-summary').textContent = marks.length+' / '+deck.weekly.length+' erledigt';
+ if(deck.weeklyPoints){
+  const {Leicht,Mittel,Schwer}=deck.weeklyPoints;
+  $('#info-weekly-points').textContent='Für neu ausgeloste Aufgaben gelten '+Leicht+' Punkte für einfach, '+Mittel+' für mittel und '+Schwer+' für schwierig.';
+ }
+ $('#info-month-goal').textContent='Das Monatsziel bringt '+deck.monthBonus+' Bonuspunkte für '+deck.monthTarget+' vollständige Trainingstage.';
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name)};
   const {amount=0,points=0} = amounts.get(item.id)||{};
@@ -313,7 +314,7 @@ function render() {
  $('#weekly').innerHTML = deck.weekly.map(([id,icon,name,description,points,color,category,difficulty],index)=>{
   const done=marks.some(mark=>mark.exercise===id);
   return `<article class="card ${color}"><div class="card-head"><span class="tile-icon" aria-hidden="true">${icon}</span><span class="points">+${points} P</span></div>
-   <p class="eyebrow">${escapeHtml(category||categories[index])}${difficulty?' · '+escapeHtml(weeklyDifficulty[difficulty]?.label||difficulty):''}</p><h3>${escapeHtml(name)}</h3><p class="hint">${escapeHtml(description)}</p>
+   <p class="eyebrow">${escapeHtml(category||categories[index])}${difficulty?' · '+escapeHtml(weeklyDifficulty[difficulty]||difficulty):''}</p><h3>${escapeHtml(name)}</h3><p class="hint">${escapeHtml(description)}</p>
    <button class="mark" type="button" data-mark="${id}" aria-pressed="${done}">${done?'✓ Erledigt':'Als erledigt markieren'}</button>
   </article>`;
  }).join('');
@@ -1215,8 +1216,7 @@ function showChallengeEntry(){
  fields.step.value=entry?.step??1;
  fields.category.value=entry?.category||categories[0];
  fields.difficulty.value=entry?.difficulty||'Mittel';
- fields.points.readOnly=Boolean(cloudUrl);
- fields.points.value=cloudUrl?weeklyDifficulty[fields.difficulty.value].points:entry?.points??25;
+ showWeeklyPoints();
  $('#challenge-daily').hidden=!daily;
  $('#challenge-daily').disabled=!daily;
  $('#challenge-weekly').hidden=daily;
@@ -1237,6 +1237,10 @@ function showChallengeRates(){
  const unit=fields.unit.value==='Sek.'?'Sekunde':'Wiederholung';
  $('#challenge-rate').textContent=normal+' Punkte pro '+unit+' · '+bonus+' Bonus-Punkte pro '+unit+' · maximal '+estimatedPoints(card,target*2)+' Punkte';
 }
+function showWeeklyPoints(){
+ const fields=challengeForm.elements;
+ fields.points.value=state.deck.weeklyPoints?.[fields.difficulty.value]??'';
+}
 function showChallengeOptions(){
  const fields=challengeForm.elements;
  const entries=challengeEntries.filter(item=>item.kind===fields.kind.value);
@@ -1255,9 +1259,7 @@ challengeEditor.addEventListener('toggle',()=>{
 });
 challengeForm.elements.kind.addEventListener('change',showChallengeOptions);
 challengeForm.elements.entry.addEventListener('change',showChallengeEntry);
-challengeForm.elements.difficulty.addEventListener('change',event=>{
- if(cloudUrl) challengeForm.elements.points.value=weeklyDifficulty[event.target.value].points;
-});
+challengeForm.elements.difficulty.addEventListener('change',showWeeklyPoints);
 for(const name of ['target','goalPoints','unit']) challengeForm.elements[name].addEventListener('input',showChallengeRates);
 challengeForm.addEventListener('submit',async event=>{
  event.preventDefault();
@@ -1267,7 +1269,7 @@ challengeForm.addEventListener('submit',async event=>{
  const kind=fields.kind.value;
  const entry={id:fields.entry.value,kind,name:fields.name.value,hint:fields.hint.value,enabled:fields.enabled.checked};
  if(kind==='daily') Object.assign(entry,{unit:fields.unit.value,target:fields.target.valueAsNumber,step:fields.step.valueAsNumber,goalPoints:fields.goalPoints.valueAsNumber});
- else Object.assign(entry,{category:fields.category.value,difficulty:fields.difficulty.value,points:fields.points.valueAsNumber});
+ else Object.assign(entry,{category:fields.category.value,difficulty:fields.difficulty.value});
  button.disabled=true;
  setError('#challenge-status');
  try{
@@ -1517,39 +1519,6 @@ if(cloudUrl){
  setInterval(()=>{if(galleryVisible && galleryKey && !document.hidden) loadGallery(true);},120000);
 }
 
-const mediaAdmin=$('#media-admin');
-const mediaForm=$('#media-admin-form');
-const mediaSelect=mediaForm.elements.season;
-const mediaDownload=$('#media-download');
-const mediaDeleteButtons=[...document.querySelectorAll('[data-delete-media]')];
-let mediaOwner;
-let mediaRequest=0;
-let mediaBusy=false;
-let mediaDownloaded=false;
-let mediaZipUrl;
-let mediaZipSeason;
-let mediaBackupId;
-const backedUpMedia=new Set();
-
-function updateMediaDeleteButtons(){
- for(const button of mediaDeleteButtons){
-  const kind=button.dataset.deleteMedia;
-  button.disabled=mediaBusy||!mediaDownloaded||!(kind==='all'?backedUpMedia.size:backedUpMedia.has(kind));
- }
-}
-
-function clearMediaDownload(){
- if(mediaZipUrl) URL.revokeObjectURL(mediaZipUrl);
- mediaZipUrl=undefined;
- mediaZipSeason=undefined;
- mediaBackupId=undefined;
- backedUpMedia.clear();
- mediaDownload.removeAttribute('href');
- mediaDownload.hidden=true;
- mediaDownloaded=false;
- updateMediaDeleteButtons();
-}
-
 function syncSeasonMedia(){
  const key=cloudUrl&&state.user?state.user.id+':'+state.season.start:null;
  gallery.hidden=!key;
@@ -1564,130 +1533,36 @@ function syncSeasonMedia(){
   galleryStatus.textContent='';
   if(galleryKey&&galleryVisible) loadGallery();
  }
+ syncMediaAdmin();
+}
+
+let mediaAdmin;
+let mediaAdminLoading=false;
+function syncMediaAdmin(){
  const adminId=cloudUrl&&state.user?.admin?state.user.id:null;
- mediaAdmin.hidden=!adminId;
- if(adminId!==mediaOwner){
-  mediaOwner=adminId;
-  mediaRequest++;
-  clearMediaDownload();
-  mediaSelect.replaceChildren();
-  if(adminId&&mediaAdmin.open) loadMediaSeasons().catch(error=>setError('#media-status',error.message));
+ if(mediaAdmin){
+  mediaAdmin.sync(adminId,state.season?.start);
+  return;
  }
-}
-
-function mediaSize(bytes){
- return new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(bytes/1000000)+' MB';
-}
-
-async function loadMediaSeasons(){
- const request=++mediaRequest;
- const seasons=await api('admin/media');
- if(request!==mediaRequest) return;
- const current=state.season.start;
- const total=seasons.reduce((sum,season)=>sum+Number(season.bytes),0);
- $('#media-usage').textContent='Fotos und Aufnahmen aller Seasons: '+mediaSize(total)+'.';
- setOptions(mediaSelect,seasons.map(season=>{
-  const start=new Date(season.start+'T00:00:00Z');
-  const next=new Date(start);
-  next.setUTCMonth(next.getUTCMonth()+1);
-  return [season.start,monthFormat.format(start)+' – '+monthFormat.format(next)+
-   (season.start===current?' (laufend)':'')+' · '+season.files+' Dateien · '+mediaSize(season.bytes)];
- }));
- $('#media-export').disabled=!seasons.length;
- if(!seasons.length) setError('#media-status','Es gibt noch keine Fotos oder Aufnahmen.');
-}
-
-mediaAdmin.addEventListener('toggle',()=>{
- if(mediaAdmin.open&&mediaOwner&&!mediaBusy){
-  loadMediaSeasons().catch(error=>setError('#media-status',error.message));
- }
-});
-mediaSelect.addEventListener('change',()=>{
- clearMediaDownload();
- setError('#media-status');
-});
-mediaForm.addEventListener('submit',async event=>{
- event.preventDefault();
- if(!mediaOwner || mediaBusy || !mediaSelect.value) return;
- const season=mediaSelect.value;
- const owner=mediaOwner;
- mediaBusy=true;
- mediaSelect.disabled=true;
- $('#media-export').disabled=true;
- clearMediaDownload();
- setError('#media-status','ZIP wird vorbereitet …');
- try{
-  const {backupId,files}=await api('admin/media/'+season);
-  if(!files.length) throw new Error('Für diese Season sind keine Dateien vorhanden.');
-  const {seasonZip}=await import('./season-media.mjs');
-  for(let i=0;i<files.length;i+=4){
-   await Promise.all(files.slice(i,i+4).map(async file=>{
-    const response=await timedFetch(file.url);
-    if(!response.ok) throw new Error('Eine Datei konnte nicht geladen werden. Das ZIP wurde nicht erstellt.');
-    file.bytes=new Uint8Array(await response.arrayBuffer());
-   }));
-   if(owner!==mediaOwner) return;
-   setError('#media-status',Math.min(i+4,files.length)+' / '+files.length+' Dateien geladen.');
-  }
-  mediaZipUrl=URL.createObjectURL(seasonZip(files));
-  mediaZipSeason=season;
-  mediaBackupId=backupId;
-  for(const {filename} of files) backedUpMedia.add(filename.startsWith('Fotos/')?'photos':'voice');
-  mediaDownload.href=mediaZipUrl;
-  mediaDownload.download='Baywatch-Bootcamp-'+season+'-Medien.zip';
-  mediaDownload.hidden=false;
-  setError('#media-status','Das ZIP ist bereit. Prüfe die heruntergeladene Datei vor dem Löschen.');
- }catch(error){
-  if(owner===mediaOwner) setError('#media-status',error.message);
- }finally{
-  mediaBusy=false;
-  mediaSelect.disabled=false;
-  $('#media-export').disabled=!mediaSelect.value;
-  updateMediaDeleteButtons();
- }
-});
-mediaDownload.addEventListener('click',()=>{
- mediaDownloaded=true;
- updateMediaDeleteButtons();
-});
-async function deleteBackedUpMedia(kind){
- const season=mediaSelect.value;
- if(!mediaOwner || mediaBusy || !mediaDownloaded || season!==mediaZipSeason) return;
- const label={photos:'Fotos',voice:'Sprachnachrichten',all:'Fotos und Sprachnachrichten'}[kind];
- if(!window.confirm('Hast du das ZIP gespeichert und geprüft? '+label+' aus dieser Sicherung endgültig löschen?')) return;
- mediaBusy=true;
- mediaSelect.disabled=true;
- updateMediaDeleteButtons();
- $('#media-export').disabled=true;
- setError('#media-status','Dateien werden gelöscht …');
- try{
-  let result;
-  do{
-   result=await api('admin/media/delete',{backupId:mediaBackupId,kind,confirm:true});
-  }while(result.more);
-  if(kind==='all') backedUpMedia.clear();
-  else backedUpMedia.delete(kind);
-  await loadMediaSeasons();
-  if(season!==mediaSelect.value) clearMediaDownload();
-  if(season===state.season.start){
-   if(kind!=='voice'){
-    galleryLinks.clear();
-    if(galleryVisible) loadGallery();
-    else galleryPhotos=undefined;
+ if(!adminId||mediaAdminLoading) return;
+ mediaAdminLoading=true;
+ import('./media-admin.mjs').then(({createMediaAdmin})=>{
+  mediaAdmin=createMediaAdmin({
+   root:$('#media-admin'),api,timedFetch,setOptions,setError,monthFormat,
+   async onCurrentMediaDeleted(kind){
+    if(kind!=='voice'){
+     galleryLinks.clear();
+     if(galleryVisible) loadGallery();
+     else galleryPhotos=undefined;
+    }
+    if(kind!=='photos'&&voiceArchive.open) loadVoiceArchive();
+    await refresh();
    }
-   if(kind!=='photos' && voiceArchive.open) loadVoiceArchive();
-   await refresh();
-  }
-  setError('#media-status',label+' aus der Sicherung wurden gelöscht.');
- }catch(error){
-  setError('#media-status',error.message);
- }finally{
-  mediaBusy=false;
-  mediaSelect.disabled=false;
-  updateMediaDeleteButtons();
-  $('#media-export').disabled=!mediaSelect.value;
- }
-}
-for(const button of mediaDeleteButtons){
- button.addEventListener('click',()=>deleteBackedUpMedia(button.dataset.deleteMedia));
+  });
+  syncMediaAdmin();
+ }).catch(error=>{
+  if(state.user?.admin) setError('#notice','Season-Verwaltung konnte nicht geladen werden. '+error.message);
+ }).finally(()=>{
+  mediaAdminLoading=false;
+ });
 }
