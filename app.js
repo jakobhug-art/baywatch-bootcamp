@@ -568,7 +568,10 @@ async function refresh() {
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
  syncPortraits();
  if(signedIn) render();
- else if(hadCloudSession && !cloudSession) setError('#notice','Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.');
+ else{
+  renderCoins();
+  if(hadCloudSession && !cloudSession) setError('#notice','Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.');
+ }
  syncReportAccount();
 }
 
@@ -894,10 +897,70 @@ function setOptions(select,options){
 }
 function clearRecording(){
  recording=undefined;
+ $('#coin-preview').pause();
  if(previewUrl) URL.revokeObjectURL(previewUrl);
  previewUrl=undefined;
  $('#coin-preview').removeAttribute('src');
  $('#coin-preview').hidden=true;
+}
+
+function clearVoiceList(list){
+ for(const audio of list.querySelectorAll('audio[data-voice-player]')){
+  audio.pause();
+  if(audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
+  audio.removeAttribute('src');
+ }
+ list.replaceChildren();
+}
+
+async function prepareVoicePlayback(blob){
+ const {voiceForPlayback}=await import('./voice-media.mjs');
+ return voiceForPlayback(blob);
+}
+
+function addVoicePlayer(card,path,{label,status,available=()=>true}){
+ const button=document.createElement('button');
+ button.type='button';
+ button.className='outline coin-inbox-action';
+ button.textContent=label;
+ const audio=document.createElement('audio');
+ audio.dataset.voicePlayer='';
+ audio.controls=true;
+ audio.preload='metadata';
+ audio.hidden=true;
+ const owner=state.user?.id;
+ const isCurrent=()=>card.isConnected && owner===state.user?.id && available();
+ button.addEventListener('click',async ()=>{
+  button.disabled=true;
+  setError(status);
+  try{
+   if(!audio.hasAttribute('src')){
+    const url=cloudUrl?(await api(path)).url:'/api/'+path;
+    const response=await timedFetch(url);
+    if(!response.ok) throw new Error('Die Aufnahme konnte nicht geladen werden.');
+    const recording=await prepareVoicePlayback(await response.blob());
+    if(!isCurrent()) return;
+    audio.src=URL.createObjectURL(recording);
+   }
+   if(!isCurrent()) return;
+   for(const other of document.querySelectorAll('audio[data-voice-player]')){
+    if(other!==audio) other.pause();
+   }
+   audio.hidden=false;
+   await audio.play().catch(error=>{
+    if(error.name!=='NotAllowedError') throw error;
+    if(isCurrent()) setError(status,'Starte die Aufnahme über die Wiedergabetaste.');
+   });
+  }catch(error){
+   if(isCurrent()){
+    if(audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
+    audio.removeAttribute('src');
+    audio.hidden=true;
+    setError(status,error.message);
+   }
+  }finally{button.disabled=false;}
+ });
+ card.append(button,audio);
 }
 function coinControls(){
  const wallet=state.coins;
@@ -935,8 +998,8 @@ function renderCoins(){
  $('#coin-login').hidden=Boolean(wallet);
  $('#coin-balance').hidden=!wallet;
  $('#coin-history').replaceChildren();
- $('#coin-inbox').replaceChildren();
- $('#coin-personal-list').replaceChildren();
+ clearVoiceList($('#coin-inbox'));
+ clearVoiceList($('#coin-personal-list'));
  $('#coin-personal').hidden=true;
  if(!wallet) return;
  showCoins($('#coin-balance'),wallet.balance,wallet.vouchers?' · '+wallet.vouchers+' Gutschein(e)':'');
@@ -972,31 +1035,8 @@ function prankCard(item,wallet,owner){
   title.textContent=coinKinds[item.kind]+' · '+item.fromName+' → '+item.toName;
   card.append(title);
   if(item.kind==='voice' && (incoming || outgoing || item.day>=state.season.start)){
-   const audio=document.createElement('audio');
    const path=(incoming||outgoing?'voice/':'voice-archive/')+item.id;
-   audio.controls=true;
-   audio.preload='none';
-   if(cloudUrl){
-    const play=document.createElement('button');
-    play.type='button';
-    play.className='outline coin-inbox-action';
-    play.textContent='Sprachnachricht abspielen';
-    play.addEventListener('click',async ()=>{
-     play.disabled=true;
-     try{
-      const {url}=await api(path);
-      audio.src=url;
-      audio.hidden=false;
-      await audio.play();
-     } catch(error){setError('#coin-status',error.message);}
-     finally{play.disabled=false;}
-    });
-    audio.hidden=true;
-    card.append(play);
-   } else {
-    audio.src='/api/'+path;
-   }
-   card.append(audio);
+   addVoicePlayer(card,path,{label:'Sprachnachricht abspielen',status:'#coin-status'});
   } else if(item.kind!=='voice') {
    const detail=document.createElement('p');
    const text=item.kind==='nickname'?'„'+item.detail+'“':item.detail;
@@ -1049,7 +1089,7 @@ function syncVoiceArchive(){
  archiveScope=scope;
  archiveRequest++;
  archiveBefore=null;
- archiveList.replaceChildren();
+ clearVoiceList(archiveList);
  archiveMore.hidden=true;
  setError('#voice-archive-status');
  if(!scope) voiceArchive.open=false;
@@ -1063,33 +1103,10 @@ function archiveCard(item){
  title.textContent=item.fromName+' → '+item.toName;
  const date=document.createElement('p');
  date.textContent=dateFormat.format(new Date(item.day+'T00:00:00Z'));
- const play=document.createElement('button');
- play.type='button';
- play.className='outline coin-inbox-action';
- play.textContent='Anhören';
- const audio=document.createElement('audio');
- audio.controls=true;
- audio.preload='none';
- audio.hidden=true;
- play.addEventListener('click',async ()=>{
-  play.disabled=true;
-  setError('#voice-archive-status');
-  try{
-   const path='voice-archive/'+item.id;
-   const url=cloudUrl?(await api(path)).url:'/api/'+path;
-   if(!card.isConnected || !voiceArchive.open) return;
-   for(const other of archiveList.querySelectorAll('audio')) if(other!==audio) other.pause();
-   audio.src=url;
-   audio.hidden=false;
-   await audio.play().catch(()=>{
-    if(card.isConnected) setError('#voice-archive-status','Starte die Aufnahme über die Wiedergabetaste.');
-   });
-  }catch(error){
-   if(card.isConnected) setError('#voice-archive-status',error.message);
-  }finally{play.disabled=false;}
+ card.append(title,date);
+ addVoicePlayer(card,'voice-archive/'+item.id,{
+  label:'Anhören',status:'#voice-archive-status',available:()=>voiceArchive.open
  });
- card.append(title,date,play);
- card.append(audio);
  return card;
 }
 
@@ -1102,7 +1119,7 @@ async function loadVoiceArchive(append=false){
   const rows=await api(append?'voice-archive?before='+archiveBefore:'voice-archive');
   if(request!==archiveRequest) return;
   const page=rows.slice(0,30);
-  if(!append) archiveList.replaceChildren();
+  if(!append) clearVoiceList(archiveList);
   archiveList.append(...page.map(archiveCard));
   archiveBefore=rows.length>30?page.at(-1).id:null;
   archiveMore.hidden=archiveBefore===null;
@@ -1183,10 +1200,11 @@ $('#coin-record').addEventListener('click',async ()=>{
    const detail=mimeType.split(';')[0];
    const blob=new Blob(chunks,{type:detail});
    if(!blob.size||blob.size>600000){setError('#coin-status','Die Aufnahme ist leer oder zu groß.');return;}
-   const bytes=new Uint8Array(await blob.arrayBuffer());
+   const [buffer,playback]=await Promise.all([blob.arrayBuffer(),prepareVoicePlayback(blob).catch(()=>blob)]);
    if(coinOwner!==owner||recorder!==session) return;
+   const bytes=new Uint8Array(buffer);
    recording={detail,audio:bytes.toBase64?bytes.toBase64():btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join(''))};
-   previewUrl=URL.createObjectURL(blob);
+   previewUrl=URL.createObjectURL(playback);
    $('#coin-preview').src=previewUrl;
    $('#coin-preview').hidden=false;
    coinControls();
