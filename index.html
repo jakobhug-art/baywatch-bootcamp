@@ -5,20 +5,24 @@
  <meta name="viewport" content="width=device-width, initial-scale=1">
  <meta name="theme-color" content="#101017">
  <meta name="description" content="Tägliche Fitnessübungen und wöchentliche Challenges für deinen Freundeskreis.">
- <title>Baywatch Bootcamp · Für Jonis Sexy Knackarsch und Sixpack</title>
+ <title>Baywatch Bootcamp</title>
  <link rel="stylesheet" href="./style.css">
  <script src="./app.js" defer></script>
 </head>
 <body>
  <header class="top"><div class="shell top-inner">
-  <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
-  <nav aria-label="Hauptnavigation">
+  <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small data-member hidden>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
+  <nav aria-label="Hauptnavigation" data-member hidden>
    <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a><a href="#info">Info</a>
   </nav>
   <button class="outline" id="account">Anmelden</button>
  </div></header>
- <main class="shell">
-  <p id="notice" role="status" hidden></p>
+ <p id="notice" class="shell" role="status" hidden></p>
+ <section class="shell panel sign-in-panel" id="sign-in-panel">
+  <h1>Willkommen bei Baywatch Bootcamp</h1>
+  <p>Melde dich an oder erstelle mit deinem Einladungscode ein Konto.</p>
+ </section>
+ <main class="shell" data-member hidden>
   <section class="hero">
    <div class="hero-copy"><p class="eyebrow" id="date">DEIN FITNESS-DECK</p>
     <h1>Jede Wiederholung<br><em>zählt.</em></h1>
@@ -27,8 +31,8 @@
    </div>
    <figure class="hero-users">
    <div class="hero-portrait">
-    <img src="./bootcamp-portrait.jpg" width="1080" height="1920" alt="Porträt eines lächelnden Bootcamp-Mitglieds" fetchpriority="high">
-    <img src="./bootcamp-portrait-2.jpg" width="1152" height="2048" alt="Porträt eines Bootcamp-Mitglieds mit Peace-Zeichen">
+    <img data-portrait="1" width="1080" height="1920" alt="Porträt eines lächelnden Bootcamp-Mitglieds">
+    <img data-portrait="2" width="1152" height="2048" alt="Porträt eines Bootcamp-Mitglieds mit Peace-Zeichen">
     <span class="hero-dumbbell" aria-hidden="true"></span>
    </div>
    <figcaption>So sehen glückliche Nutzer der App aus 😉</figcaption>
@@ -197,7 +201,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info">Info</a><a href="#muenzen">Münzkonto</a><a href="#feedback">Bugs & Ideen</a><small class="app-version">Version 0.1.8</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.9</small></footer>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
   <form id="auth-form">

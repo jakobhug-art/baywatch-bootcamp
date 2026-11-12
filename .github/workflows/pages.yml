@@ -34,7 +34,7 @@ jobs:
             -H "apikey: $BOOTCAMP_PUBLISHABLE_KEY" \
             -H 'Origin: https://jakobhug-art.github.io' \
             "$BOOTCAMP_SUPABASE_URL/functions/v1/bootcamp/state" | \
-            node --input-type=module -e 'const data=JSON.parse(await Array.fromAsync(process.stdin).then(parts=>Buffer.concat(parts).toString())); if(data.user!==null || data.deck?.weekly?.length!==3 || !Array.isArray(data.spins)) process.exit(1);'
+            node --input-type=module -e 'const data=JSON.parse(await Array.fromAsync(process.stdin).then(parts=>Buffer.concat(parts).toString())); if(data.user!==null || Object.keys(data).length!==1) process.exit(1);'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

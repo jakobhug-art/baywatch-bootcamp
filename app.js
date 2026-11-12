@@ -258,9 +258,39 @@ function renderRanking() {
  target.append(list);
 }
 
+let portraitOwner;
+function syncPortraits(){
+ const owner=state.user?.id;
+ if(owner===portraitOwner) return;
+ portraitOwner=owner;
+ for(const portrait of document.querySelectorAll('[data-portrait]')){
+  if(portrait.src.startsWith('blob:')) URL.revokeObjectURL(portrait.src);
+  portrait.removeAttribute('src');
+  if(!owner) continue;
+  const path='/portrait/'+portrait.dataset.portrait;
+  const headers=cloudUrl?{apikey:cloudKey,Authorization:'Bearer '+cloudSession.access_token}:{};
+  fetch(cloudUrl?cloudUrl+path:'/api'+path,{headers})
+   .then(response=>{
+    if(!response.ok) throw new Error('Ein Foto konnte nicht geladen werden.');
+    return response.blob();
+   })
+   .then(blob=>{
+    if(portraitOwner===owner) portrait.src=URL.createObjectURL(blob);
+   })
+   .catch(error=>{
+    if(portraitOwner===owner) setError('#notice',error.message);
+   });
+ }
+}
+
 async function refresh() {
  state=await api('state');
- render();
+ const signedIn=Boolean(state.user);
+ for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
+ $('#sign-in-panel').hidden=signedIn;
+ $('#account').textContent=signedIn?'Abmelden':'Anmelden';
+ syncPortraits();
+ if(signedIn) render();
  syncReportAccount();
 }
 
@@ -843,7 +873,7 @@ challengeForm.addEventListener('submit',async event=>{
 });
 const berlinDay=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'});
 async function refreshNewDay(){
- if(!state || busy || document.hidden || berlinDay.format(new Date())===state.deck.day) return;
+ if(!state?.user || busy || document.hidden || berlinDay.format(new Date())===state.deck.day) return;
  busy=true;
  try{await refresh();}
  catch(error){setError('#notice',error.message);}

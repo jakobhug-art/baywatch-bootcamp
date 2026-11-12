@@ -1,4 +1,4 @@
-import {copyFileSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {copyFileSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 
 const url=process.env.BOOTCAMP_SUPABASE_URL;
 const key=process.env.BOOTCAMP_PUBLISHABLE_KEY;
@@ -11,6 +11,7 @@ const policy=[
  "script-src 'self'",
  "style-src 'self' https://fonts.googleapis.com",
  "font-src https://fonts.gstatic.com",
+ "img-src 'self' blob:",
  "media-src 'self' blob: "+url,
  'connect-src '+url,
  "object-src 'none'",
@@ -29,5 +30,8 @@ const html=source.replace('</head>',' '+metadata+'\n</head>')
  .replaceAll('./style.css','./style.css?v='+version)
  .replaceAll('./app.js','./app.js?v='+version);
 mkdirSync('dist',{recursive:true});
+for(const oldPortrait of ['bootcamp-portrait.jpg','bootcamp-portrait-2.jpg']){
+ rmSync('dist/'+oldPortrait,{force:true});
+}
 writeFileSync('dist/index.html',html);
-for(const asset of ['app.js','style.css','bootcamp-portrait.jpg','bootcamp-portrait-2.jpg']) copyFileSync(asset,'dist/'+asset);
+for(const asset of ['app.js','style.css']) copyFileSync(asset,'dist/'+asset);

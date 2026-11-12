@@ -76,8 +76,7 @@ if(process.argv[2]==='--grant-admin'){
  process.exit(0);
 }
 const hash = value => createHash('sha256').update(value).digest('hex');
-const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']],['/bootcamp-portrait.jpg',['bootcamp-portrait.jpg','image/jpeg']]]);
-assets.set('/bootcamp-portrait-2.jpg',['bootcamp-portrait-2.jpg','image/jpeg']);
+const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']]]);
 const attempts = new Map();
 const resetAttempts = new Map();
 const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
@@ -105,7 +104,7 @@ createServer(async (req,res)=>{
   res.end(JSON.stringify(data));
  };
  res.setHeader('X-Content-Type-Options','nosniff');
- res.setHeader('Content-Security-Policy',"default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self' blob:; frame-ancestors 'none'; form-action 'self'");
+ res.setHeader('Content-Security-Policy',"default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob:; media-src 'self' blob:; frame-ancestors 'none'; form-action 'self'");
  try {
   if(req.method==='GET' && assets.has(path)){
    const [file,type]=assets.get(path);
@@ -115,6 +114,16 @@ createServer(async (req,res)=>{
   if(req.method==='POST' && !req.headers['content-type']?.startsWith('application/json')) fail(415,'JSON erforderlich.');
   const token=req.headers.cookie?.match(/(?:^|; )repdeck=([a-f0-9]{64})(?:;|$)/)?.[1];
   const user=token && db.prepare('SELECT users.id,handle,EXISTS(SELECT 1 FROM admins WHERE admins.user_id=users.id) AS admin FROM sessions JOIN users ON users.id=sessions.user_id WHERE token=? AND expires>?').get(hash(token),Date.now());
+  if(req.method==='GET' && path==='/api/state' && !user) return reply({user:null});
+  const portrait=path.match(/^\/api\/portrait\/([12])$/);
+  if(req.method==='GET' && portrait){
+   if(!user) fail(401,'Bitte melde dich an.');
+   let photo;
+   try { photo=readFileSync(new URL('private-portraits/'+portrait[1]+'.jpg',import.meta.url)); }
+   catch { fail(404,'Foto nicht gefunden.'); }
+   res.writeHead(200,{'Content-Type':'image/jpeg','Cache-Control':'private, no-store'});
+   return res.end(photo);
+  }
   if(req.method==='POST' && ['/api/register','/api/login'].includes(path)){
    const now=Date.now();
    for(const [ip,entry] of attempts) if(entry.until<=now) attempts.delete(ip);

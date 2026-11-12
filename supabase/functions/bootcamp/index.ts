@@ -45,10 +45,21 @@ Deno.serve(async (request) => {
   try {
     const token = request.headers.get("authorization")?.match(/^Bearer ([\w.-]+)$/i)?.[1];
     if (path === "/state" && request.method === "GET") {
-      if (!token) return rpc("bootcamp_training_state", { p_user: null });
+      if (!token) return json({ user: null });
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc("bootcamp_training_state", { p_user: data.user.id });
+    }
+    const portrait = path?.match(/^\/portrait\/([12])$/);
+    if (portrait && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      const profile = await admin.rpc("bootcamp_has_profile", { p_user: data.user.id });
+      if (profile.error || !profile.data) return json({ error: "Registrierung erforderlich." }, 403);
+      const photo = await admin.storage.from("bootcamp-portraits").download(portrait[1] + ".jpg");
+      if (photo.error || !photo.data) return json({ error: "Foto nicht gefunden." }, 404);
+      return new Response(photo.data, { headers: { ...cors, "Content-Type": "image/jpeg", "X-Content-Type-Options": "nosniff" } });
     }
     if (["/reports", "/admin/challenges"].includes(path ?? "") && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);

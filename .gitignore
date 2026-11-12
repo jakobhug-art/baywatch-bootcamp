@@ -4,4 +4,5 @@ repdeck.sqlite*
 .env.supabase
 repdeck-online.sqlite*
 /dist/
+/private-portraits/
 /supabase/.temp/

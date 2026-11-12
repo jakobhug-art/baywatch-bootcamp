@@ -178,3 +178,5 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 .hero-users{margin:0;width:min(100%,390px);justify-self:end;text-align:center}
 .hero-users figcaption{margin-top:12px;color:var(--muted);font-size:.875rem}
 @media(max-width:650px){.hero-users{justify-self:center}}
+.sign-in-panel{margin-block:44px;padding:clamp(24px,6vw,64px)}
+.sign-in-panel h1{font-size:clamp(2rem,5vw,3.4rem)}
