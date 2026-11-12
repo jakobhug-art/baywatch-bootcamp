@@ -273,6 +273,18 @@ Deno.serve(async (request) => {
     }
     if (path === "/coins/buy" && typeof input.day === "string" && typeof input.kind === "string"
         && typeof input.requestId === "string" && uuid.test(input.requestId)) {
+      if (input.kind === "nickname_week" || input.kind === "nickname_season") {
+        const detail = typeof input.detail === "string" ? input.detail.trim() : "";
+        if ([...detail].length < 2 || [...detail].length > 40 || /\p{C}/u.test(detail)) {
+          return json({ error: "Der Namenszusatz muss 2 bis 40 Zeichen lang sein." }, 400);
+        }
+        const result = await rpc("bootcamp_buy_nickname", {
+          p_user: data.user.id, p_day: input.day, p_request: input.requestId,
+          p_target: typeof input.target === "string" && uuid.test(input.target) ? input.target : null,
+          p_detail: detail, p_duration: input.kind === "nickname_week" ? "week" : "season",
+        });
+        return result.ok ? json({ ok: true }) : result;
+      }
       let audioPath: string | null = null;
       if (input.kind === "voice") {
         if (!audioTypes.includes(input.detail) || typeof input.audio !== "string" || input.audio.length > 800000

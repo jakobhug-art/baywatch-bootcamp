@@ -100,9 +100,10 @@
     <div class="panel">
      <h3>Münzen einsetzen</h3>
      <form id="coin-form">
-      <label>Aktion<select name="kind"><option value="voice">Sprachnachricht · 2 Münzen</option><option value="symbol">Symbol-Prank · 5 Münzen</option><option value="exercise">Extraübung · 6 Münzen</option><option value="rest">Freier Tag · 12 Münzen</option></select></label>
+      <label>Aktion<select name="kind"><option value="voice">Sprachnachricht · 2 Münzen</option><option value="symbol">Symbol-Prank · 5 Münzen</option><option value="exercise">Extraübung · 6 Münzen</option><option value="nickname_week">Namenszusatz, 7 Tage · 8 Münzen</option><option value="nickname_season">Namenszusatz bis Season-Ende · 24 Münzen</option><option value="rest">Freier Tag · 12 Münzen</option></select></label>
       <label id="coin-target">Person<select name="target"></select></label>
       <label id="coin-detail" hidden>Auswahl<select name="detail"></select></label>
+      <label id="coin-nickname" hidden>Namenszusatz<input name="nickname" minlength="2" maxlength="40" required disabled placeholder="z. B. der Stumpen"><small class="hint" id="nickname-info"></small></label>
       <div id="coin-recording"><p class="hint">Alle angemeldeten Mitglieder können die Aufnahme während der laufenden Season im Archiv anhören.</p><button class="outline" type="button" id="coin-record">Aufnehmen (max. 20 Sek.)</button><audio id="coin-preview" controls hidden></audio></div>
       <p class="hint" id="prank-limit">Je Person und Prank-Art ist von Montag bis Sonntag ein Kauf möglich.</p>
       <p id="rest-info" hidden></p>
@@ -111,7 +112,12 @@
      <p id="coin-status" role="status" hidden></p>
      <details><summary>Münzverlauf</summary><ul id="coin-history"></ul></details>
     </div>
-    <div class="panel"><h3>Nachrichten & Pranks</h3><div id="coin-inbox"></div></div>
+    <div class="panel">
+     <h3>Aktuelle Nachrichten & Pranks</h3>
+     <p class="hint prank-feed-intro">Laufende Pranks der Gruppe aus dieser Woche.</p>
+     <div id="coin-inbox"></div>
+     <details id="coin-personal" hidden><summary>Weitere eigene Pranks</summary><div id="coin-personal-list"></div></details>
+    </div>
    </div>
    <details class="panel" id="voice-archive">
     <summary>Sprachnachrichten-Archiv</summary>
@@ -145,6 +151,7 @@
     <ul>
      <li>Für 2 Münzen schickst du eine Sprachnachricht. In den nächsten 48 Stunden spielt sie automatisch ab, wenn der Empfänger das Soll einer Tagesübung erstmals an diesem Tag erreicht. Im Archiv können alle Mitglieder die Aufnahme während der laufenden Season anhören.</li>
      <li>Pro Person und Prank-Art kannst du von Montag bis Sonntag einen Prank schicken. Ein Symbol und eine Sprachnachricht an dieselbe Person sind also beide möglich.</li>
+     <li>Für 8 Münzen gibst du jemandem sieben Tage lang einen Namenszusatz. Für 24 Münzen gilt er bis zum Ende der laufenden Season. In der Rangliste und im Profil steht jeweils der neueste aktive Zusatz.</li>
      <li>Für 5 Münzen platzierst du sieben Tage lang ein Symbol auf den Tageskarten einer Person. Mehrere Symbole können gleichzeitig aktiv sein. Gleiche Symbole zeigen die Anzahl an.</li>
      <li>Für 6 Münzen schickst du eine freiwillige Extraübung ohne Ranglistenpunkte. Eine Retourkutsche für 4 Münzen fordert euch beide heraus.</li>
      <li>Für 12 Münzen oder einen Gutschein kaufst du den aktuellen Tag frei. Der Tag zählt fürs Monatsziel und öffnet das Rad.</li>
@@ -252,7 +259,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.20</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.21</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>

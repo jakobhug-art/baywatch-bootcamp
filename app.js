@@ -363,6 +363,11 @@ function renderWheel(unlocked) {
  }
 }
 
+function prankDisplayName(handle,id){
+ const nickname=state.coins?.nicknames?.[id];
+ return nickname?handle+' „'+nickname+'“':handle;
+}
+
 function renderRanking() {
  const target=$('#ranking');
  const seasonInfo=$('#season-info');
@@ -399,11 +404,12 @@ function renderRanking() {
   previous=points;
   const row=document.createElement('li');
   const place=document.createElement('span');
+  const isSelf=handle===state.user.handle;
   const memberId=memberIds.get(handle);
   const name=document.createElement(memberId?'button':'span');
   const score=document.createElement('strong');
   place.textContent=rank+'.';
-  name.textContent=handle+(handle===state.user.handle?' · Du':'');
+  name.textContent=prankDisplayName(handle,isSelf?state.user.id:memberId)+(isSelf?' · Du':'');
   if(memberId){
    name.type='button';
    name.className='member-link';
@@ -425,7 +431,7 @@ async function showMemberSummary(id,handle){
  const request=++memberSummaryRequest;
  const owner=state.user.id;
  const content=$('#member-summary-content');
- $('#member-summary-title').textContent=handle;
+ $('#member-summary-title').textContent=prankDisplayName(handle,id);
  content.hidden=true;
  setError('#member-summary-status','Übersicht wird geladen …');
  memberDialog.showModal();
@@ -433,7 +439,7 @@ async function showMemberSummary(id,handle){
  try{
   const summary=await api('members/'+encodeURIComponent(id));
   if(!isCurrent()) return;
-  $('#member-summary-title').textContent=summary.handle;
+  $('#member-summary-title').textContent=prankDisplayName(summary.handle,id);
   showCoins($('#member-summary-balance'),summary.balance);
   const daily=$('#member-summary-daily');
   daily.replaceChildren();
@@ -855,7 +861,7 @@ if(location.protocol==='file:'){
  refresh().catch(error=>setError('#notice',error.message));
 }
 const coinForm=$('#coin-form');
-const coinKinds={voice:'Sprachnachricht',symbol:'Symbol-Prank',exercise:'Extraübung',return:'Retourkutsche'};
+const coinKinds={voice:'Sprachnachricht',symbol:'Symbol-Prank',exercise:'Extraübung',return:'Retourkutsche',nickname:'Namenszusatz'};
 const symbolNames=['Kackhaufen','Herz','Pfirsich','Aubergine','Mittelfinger'];
 let coinOwner;
 let recording;
@@ -879,8 +885,16 @@ function coinControls(){
  const wallet=state.coins;
  const kind=coinForm.elements.kind.value;
  const rest=kind==='rest';
+ const nickname=kind.startsWith('nickname_');
  $('#coin-target').hidden=rest;
  $('#coin-detail').hidden=!['symbol','exercise'].includes(kind);
+ $('#coin-nickname').hidden=!nickname;
+ coinForm.elements.nickname.disabled=!nickname;
+ if(nickname){
+  const expiry=state.season.end.split('-').reverse().join('.');
+  $('#nickname-info').textContent=(kind==='nickname_season'?'Läuft bis '+expiry+'. ':'Läuft sieben Tage. ')+
+   'In Rangliste und Profil steht der neueste aktive Zusatz.';
+ }
  $('#coin-recording').hidden=kind!=='voice';
  $('#rest-info').hidden=!rest;
  $('#prank-limit').hidden=rest;
@@ -904,6 +918,8 @@ function renderCoins(){
  $('#coin-balance').hidden=!wallet;
  $('#coin-history').replaceChildren();
  $('#coin-inbox').replaceChildren();
+ $('#coin-personal-list').replaceChildren();
+ $('#coin-personal').hidden=true;
  if(!wallet) return;
  showCoins($('#coin-balance'),wallet.balance,wallet.vouchers?' · '+wallet.vouchers+' Gutschein(e)':'');
  setOptions(coinForm.elements.target,wallet.friends.map(friend=>[friend.id,friend.handle]));
@@ -914,20 +930,32 @@ function renderCoins(){
   $('#coin-history').append(row);
  }
  const inbox=$('#coin-inbox');
- if(!wallet.items.length){
+ const group=wallet.groupPranks??wallet.items;
+ const groupIds=new Set(group.map(item=>item.id));
+ const personal=wallet.items.filter(item=>!groupIds.has(item.id));
+ if(!group.length){
   const empty=document.createElement('p');
-  empty.textContent='Hier erscheinen deine Nachrichten und Pranks.';
+  empty.textContent='Diese Woche laufen noch keine Pranks.';
   inbox.append(empty);
  }
- for(const item of wallet.items){
+ for(const item of group) inbox.append(prankCard(item,wallet,owner));
+ if(personal.length){
+  $('#coin-personal').hidden=false;
+  $('#coin-personal-list').append(...personal.map(item=>prankCard(item,wallet,owner)));
+ }
+}
+
+function prankCard(item,wallet,owner){
   const incoming=item.recipient===owner;
+  const outgoing=item.sender===owner;
   const card=document.createElement('article');
   card.className='report-card';
   const title=document.createElement('h4');
-  title.textContent=coinKinds[item.kind]+' · '+(incoming?'von '+item.fromName:'an '+item.toName);
+  title.textContent=coinKinds[item.kind]+' · '+item.fromName+' → '+item.toName;
   card.append(title);
-  if(item.kind==='voice'){
+  if(item.kind==='voice' && (incoming || outgoing || item.day>=state.season.start)){
    const audio=document.createElement('audio');
+   const path=(incoming||outgoing?'voice/':'voice-archive/')+item.id;
    audio.controls=true;
    audio.preload='none';
    if(cloudUrl){
@@ -938,7 +966,7 @@ function renderCoins(){
     play.addEventListener('click',async ()=>{
      play.disabled=true;
      try{
-      const {url}=await api('voice/'+item.id);
+      const {url}=await api(path);
       audio.src=url;
       audio.hidden=false;
       await audio.play();
@@ -948,12 +976,13 @@ function renderCoins(){
     audio.hidden=true;
     card.append(play);
    } else {
-    audio.src='/api/voice/'+item.id;
+    audio.src='/api/'+path;
    }
    card.append(audio);
-  } else {
+  } else if(item.kind!=='voice') {
    const detail=document.createElement('p');
-   detail.textContent=item.detail+(item.kind==='symbol'?' · bis '+item.expires:'');
+   const text=item.kind==='nickname'?'„'+item.detail+'“':item.detail;
+   detail.textContent=text+(['symbol','nickname'].includes(item.kind)?' · bis '+item.expires.split('-').reverse().join('.'):'');
    card.append(detail);
   }
   const addButton=(label,action)=>{
@@ -974,7 +1003,7 @@ function renderCoins(){
     addButton('Annehmen',()=>sendCoin('respond',{id:item.id,action:'accept'}));
     addButton('Ablehnen',()=>sendCoin('respond',{id:item.id,action:'decline'}));
    }
-   if(item.status==='accepted'&&(incoming?!item.recipient_done:item.kind==='return'&&!item.sender_done)){
+   if(item.status==='accepted'&&(incoming&&!item.recipient_done || outgoing&&item.kind==='return'&&!item.sender_done)){
     addButton('Erledigt',()=>sendCoin('respond',{id:item.id,action:'done'}));
    }
   }
@@ -987,8 +1016,7 @@ function renderCoins(){
    }
    addButton('Retourkutsche · 4 Münzen',()=>sendCoin('buy',{kind:'return',source:item.id,detail:choices.value}));
   }
-  inbox.append(card);
- }
+  return card;
 }
 const voiceArchive=$('#voice-archive');
 const archiveList=$('#voice-archive-list');
@@ -1096,12 +1124,16 @@ coinForm.addEventListener('submit',async event=>{
  event.preventDefault();
  const kind=coinForm.elements.kind.value;
  const target=coinForm.elements.target.value;
- const payload={kind,target:cloudUrl?target:Number(target),detail:coinForm.elements.detail.value};
+ const nickname=kind.startsWith('nickname_');
+ const detail=nickname?coinForm.elements.nickname.value.trim():coinForm.elements.detail.value;
+ const payload={kind,target:cloudUrl?target:Number(target),detail};
  if(kind==='voice'){
   if(!recording) return;
   Object.assign(payload,recording);
  }
- if(await sendCoin('buy',payload)&&kind==='voice'){
+ if(!await sendCoin('buy',payload)) return;
+ if(nickname) coinForm.elements.nickname.value='';
+ if(kind==='voice'){
   clearRecording();
   coinControls();
  }

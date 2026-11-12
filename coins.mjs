@@ -1,10 +1,17 @@
 import { daily, exercisePoints } from './deck.mjs';
+import { seasonStart } from './rankings.mjs';
 
-const prices={voice:2,symbol:5,exercise:6,return:4,rest:12};
+const prices={voice:2,symbol:5,exercise:6,return:4,rest:12,nickname_week:8,nickname_season:24};
 const symbols=['💩','❤️','🍑','🍆','🖕'];
 const exercises=['3 × 15 Kniebeugen','3 × 30 Sekunden Plank','3 × 10 Liegestütze'];
 const audioTypes=['audio/webm','audio/ogg','audio/mp4'];
 const maxAudio=600000;
+
+function weekStart(day){
+ const monday=new Date(day+'T00:00:00Z');
+ monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7);
+ return monday.toISOString().slice(0,10);
+}
 
 export function setupCoins(db,fail){
  db.exec(`
@@ -40,16 +47,21 @@ export function setupCoins(db,fail){
   catch(error){db.exec('ROLLBACK');throw error;}
  }
  function state(user,day){
-  const items=db.prepare(`
+  const active=db.prepare(`
    SELECT p.id,p.kind,p.detail,p.day,p.expires,p.status,p.sender_done,p.recipient_done,
     p.sender,p.recipient,s.handle AS fromName,r.handle AS toName,
-    NOT EXISTS(SELECT 1 FROM pranks child WHERE child.source=p.id) AS canReturn
+    p.recipient=? AND p.kind<>'return' AND NOT EXISTS(SELECT 1 FROM pranks child WHERE child.source=p.id) AS canReturn
    FROM pranks p JOIN users s ON s.id=p.sender JOIN users r ON r.id=p.recipient
-   WHERE ((p.sender=? OR p.recipient=?) AND p.expires>=?) ORDER BY p.id DESC
-  `).all(user,user,day);
+   WHERE p.day<=? AND p.expires>=? ORDER BY p.id DESC
+  `).all(user,day,day);
+  const week=weekStart(day);
+  const items=active.filter(item=>item.sender===user||item.recipient===user);
+  const groupPranks=active.filter(item=>item.day>=week&&item.status!=='declined'&&
+   (!item.recipient_done||item.kind==='return'&&!item.sender_done));
+  const nicknames=Object.fromEntries(active.filter(item=>item.kind==='nickname').reverse().map(item=>[item.recipient,item.detail]));
   return {balance:balance.get(user).amount,vouchers:vouchers.all(user).length,prices,symbols,exercises,rest:Boolean(hasRest.get(user,day)),
    friends:db.prepare('SELECT id,handle FROM users WHERE id<>? ORDER BY handle').all(user),
-   history:db.prepare('SELECT amount,label,day FROM coin_entries WHERE user_id=? ORDER BY id DESC LIMIT 25').all(user),items};
+   history:db.prepare('SELECT amount,label,day FROM coin_entries WHERE user_id=? ORDER BY id DESC LIMIT 25').all(user),items,groupPranks,nicknames};
  }
  function buy(user,input,day){
   const kind=input?.kind;
@@ -69,24 +81,31 @@ export function setupCoins(db,fail){
    let source=null;
    let audio=null;
    let expires=day;
+   const isNickname=kind==='nickname_week'||kind==='nickname_season';
+   const prankKind=isNickname?'nickname':kind;
    if(kind==='return'){
-    const original=db.prepare("SELECT * FROM pranks WHERE id=? AND recipient=? AND kind IN ('voice','symbol','exercise') AND expires>=?").get(Number(input.source)||0,user,day);
+    const original=db.prepare("SELECT * FROM pranks WHERE id=? AND recipient=? AND kind<>'return' AND expires>=?").get(Number(input.source)||0,user,day);
     if(!original || db.prepare('SELECT 1 FROM pranks WHERE source=?').get(original.id)) fail(409,'Diese Retourkutsche ist nicht verfügbar.');
     recipient=original.sender;
     detail=original.kind==='exercise'?original.detail:detail;
     source=original.id;
    }
    if(!Number.isSafeInteger(recipient)||recipient===user||!db.prepare('SELECT 1 FROM users WHERE id=?').get(recipient)) fail(400,'Wähle eine Person.');
-   const monday=new Date(day+'T00:00:00Z');
-   monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7);
-   const week=monday.toISOString().slice(0,10);
-   if(db.prepare('SELECT 1 FROM pranks WHERE sender=? AND recipient=? AND kind=? AND day>=?').get(user,recipient,kind,week)){
+   if(db.prepare('SELECT 1 FROM pranks WHERE sender=? AND recipient=? AND kind=? AND day>=?').get(user,recipient,prankKind,weekStart(day))){
     fail(409,'Du hast dieser Person diese Woche schon einen Prank dieser Art geschickt.');
    }
    if(kind==='symbol'){
     if(!symbols.includes(detail)) fail(400,'Wähle ein Symbol.');
     const end=new Date(day+'T00:00:00Z');
     end.setUTCDate(end.getUTCDate()+6);
+    expires=end.toISOString().slice(0,10);
+   }
+   if(isNickname){
+    detail=typeof detail==='string'?detail.trim():'';
+    if([...detail].length<2||[...detail].length>40||/\p{C}/u.test(detail)) fail(400,'Der Namenszusatz muss 2 bis 40 Zeichen lang sein.');
+    const end=new Date((kind==='nickname_week'?day:seasonStart(day))+'T00:00:00Z');
+    if(kind==='nickname_week') end.setUTCDate(end.getUTCDate()+6);
+    else end.setUTCMonth(end.getUTCMonth()+2,0);
     expires=end.toISOString().slice(0,10);
    }
    if(kind==='exercise'||kind==='return'){
@@ -99,8 +118,10 @@ export function setupCoins(db,fail){
     end.setUTCDate(end.getUTCDate()+6);
     expires=end.toISOString().slice(0,10);
    }
-   db.prepare('INSERT INTO pranks(sender,recipient,kind,detail,day,expires,source,audio) VALUES(?,?,?,?,?,?,?,?)').run(user,recipient,kind,detail,day,expires,source,audio);
-   credit.run(user,-prices[kind],{voice:'Sprachnachricht',symbol:'Symbol-Prank',exercise:'Extraübung',return:'Retourkutsche'}[kind],day);
+   db.prepare('INSERT INTO pranks(sender,recipient,kind,detail,day,expires,source,audio) VALUES(?,?,?,?,?,?,?,?)').run(user,recipient,prankKind,detail,day,expires,source,audio);
+   const labels={voice:'Sprachnachricht',symbol:'Symbol-Prank',exercise:'Extraübung',return:'Retourkutsche',
+    nickname_week:'Namenszusatz · 7 Tage',nickname_season:'Namenszusatz · Season'};
+   credit.run(user,-prices[kind],labels[kind],day);
   });
  }
  function respond(user,input,day){
