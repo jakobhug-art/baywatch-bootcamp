@@ -147,3 +147,10 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 @media(max-width:380px){.header-brand .brand-icon{display:none}.header-brand small{font-size:10px}}
 .app-version{white-space:nowrap}
 .footer{flex-wrap:wrap}
+@media (hover:hover){
+ .card:hover,.panel:hover{border-color:color-mix(in srgb,var(--tone,var(--purple)) 42%,var(--line))}
+ .counter button:not(:disabled):hover,.save-amount:not(:disabled):hover,.segments button:not(:disabled):hover{filter:brightness(1.2)}
+}
+.card,.panel,.counter button,.segments button{transition:border-color .16s ease,filter .16s ease}
+.card:focus-within{border-color:color-mix(in srgb,var(--tone,var(--purple)) 55%,var(--line))}
+@media(prefers-reduced-motion:reduce){.card,.panel,.counter button,.segments button{transition:none}}

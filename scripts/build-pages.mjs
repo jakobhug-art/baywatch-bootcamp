@@ -22,7 +22,12 @@ const metadata=[
  '<meta name="bootcamp-key" content="'+key+'">',
  '<meta http-equiv="Content-Security-Policy" content="'+policy+'">',
 ].join('\n ');
-const html=readFileSync('index.html','utf8').replace('</head>',' '+metadata+'\n</head>');
+const source=readFileSync('index.html','utf8');
+const version=source.match(/class="app-version">Version (\d+\.\d+\.\d+)</)?.[1];
+if(!version) throw new Error('App version is missing.');
+const html=source.replace('</head>',' '+metadata+'\n</head>')
+ .replaceAll('./style.css','./style.css?v='+version)
+ .replaceAll('./app.js','./app.js?v='+version);
 mkdirSync('dist',{recursive:true});
 writeFileSync('dist/index.html',html);
 for(const asset of ['app.js','style.css']) copyFileSync(asset,'dist/'+asset);

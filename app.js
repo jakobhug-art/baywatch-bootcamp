@@ -10,6 +10,37 @@ let state;
 let rankingPeriod = 'seasonRanking';
 let register = false;
 let busy = false;
+const quantityQueue = new Map();
+let quantityRefresh;
+
+function estimatedPoints(card,amount){
+ const extra=Math.min(Math.max(amount-card.target,0),card.target);
+ if(card.goalPoints){
+  return Math.floor(Math.min(amount,card.target)*card.goalPoints/card.target)
+   +Math.floor(extra*card.goalPoints/(4*card.target));
+ }
+ return Math.floor(Math.min(amount,card.target)/card.step)+Math.floor(extra/(4*card.step));
+}
+
+function visibleAmounts(){
+ const amounts=new Map(state.quantities.map(item=>[item.exercise,item]));
+ for(const entry of quantityQueue.values()){
+  if(entry.day===state.deck.day && entry.owner===state.user?.id){
+   const card=state.deck.daily.find(item=>item.id===entry.id);
+   if(card) amounts.set(card.id,{amount:entry.amount,points:estimatedPoints(card,entry.amount)});
+  }
+ }
+ return amounts;
+}
+
+function renderDaySummary(amounts){
+ const {deck,spins,coins}=state;
+ const wheelPoints=spins.reduce((sum,spin)=>sum+(spin.completed?spin.reward:spin.initial),0);
+ const rest=Boolean(coins?.rest);
+ const points=deck.daily.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?estimatedPoints(item,item.target):0),wheelPoints);
+ const reached=rest?deck.daily.length:deck.daily.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
+ $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+deck.daily.length+' Ziele')+' · '+points+' P';
+}
 
 const cloudUrl = document.querySelector('meta[name="bootcamp-api"]')?.content;
 const cloudKey = document.querySelector('meta[name="bootcamp-key"]')?.content;
@@ -78,17 +109,16 @@ async function api(path, payload) {
 }
 
 function render() {
- const {deck,user,marks,quantities,activeDays,spins,coins} = state;
+ const {deck,user,marks,quantities,activeDays,coins} = state;
  $('#challenge-admin').hidden=!user?.admin;
- const amounts = new Map(quantities.map(item=>[item.exercise,item]));
- const wheelPoints = spins.reduce((sum,spin)=>sum+(spin.completed?spin.reward:spin.initial),0);
+ const amounts = visibleAmounts();
  const rest=Boolean(coins?.rest);
  const symbol=coins?.items.find(item=>item.kind==='symbol'&&item.recipient===user.id)?.detail;
- const dayPoints = deck.daily.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?Math.floor(item.target/item.step):0),wheelPoints);
- const reached = rest?deck.daily.length:deck.daily.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
+ const savedAmounts=new Map(quantities.map(item=>[item.exercise,item.amount]));
+ const unlocked=rest||deck.daily.every(item=>(savedAmounts.get(item.id)||0)>=item.target);
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
- $('#daily-summary').textContent = (rest?'Freier Tag':reached+' / '+deck.daily.length+' Ziele')+' · '+dayPoints+' P';
+ renderDaySummary(amounts);
  const extra=coins?.items.find(item=>['exercise','return'].includes(item.kind)&&item.recipient===user.id&&item.status!=='declined'&&!item.recipient_done);
  $('#daily-extra').hidden=!extra;
  $('#daily-extra').textContent=extra?'Extraübung für heute: '+extra.detail+' · Ansehen':'';
@@ -99,7 +129,7 @@ function render() {
   return `<article class="card ${item.color}">
    ${symbol?`<span class="prank-symbol" aria-label="Symbol-Prank">${symbol}</span>`:''}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
-   <h3>${item.name}</h3><p class="hint">${item.hint}</p><p class="hint">Bis zum Soll: ${item.step} ${item.unit} je Punkt · danach: ${item.step*4} ${item.unit} je Bonuspunkt</p>
+   <h3>${item.name}</h3><p class="hint">${item.hint}</p><p class="hint">${estimatedPoints(item,item.target)} P beim Soll · bis zu +${estimatedPoints(item,item.target*2)-estimatedPoints(item,item.target)} P Bonus</p>
    <progress max="${item.target}" value="${Math.min(amount,item.target)}" aria-label="Tagesziel ${item.name}"></progress>
    <p class="progress-label">${amount} / ${item.target} ${item.unit}${amount>=item.target?' · ✓':''}</p>
    <form class="counter" data-id="${item.id}">
@@ -123,7 +153,7 @@ function render() {
   <progress class="cyan" max="${deck.monthTarget}" value="${Math.min(days,deck.monthTarget)}" aria-label="Monatsziel"></progress>
   <p>${days} / ${deck.monthTarget} vollständige Tage</p>`;
  renderRanking();
- renderWheel(reached===deck.daily.length);
+ renderWheel(unlocked);
  renderCoins();
 }
 
@@ -250,20 +280,83 @@ async function change(path,payload,focusSelector) {
  finally{busy=false;}
 }
 
-function saveAmount(form, delta, control) {
+function updateQuantityCard(form,card,amount){
+ const tile=form.closest('.card');
+ tile.querySelector('.points').textContent=estimatedPoints(card,amount)+' P';
+ tile.querySelector('progress').value=Math.min(amount,card.target);
+ tile.querySelector('.progress-label').textContent=amount+' / '+card.target+' '+card.unit+(amount>=card.target?' · ✓':'');
+ renderDaySummary(visibleAmounts());
+}
+
+function refreshAfterQuantities(){
+ clearTimeout(quantityRefresh);
+ quantityRefresh=setTimeout(async ()=>{
+  if(quantityQueue.size) return;
+  if(busy){refreshAfterQuantities();return;}
+  const active=document.activeElement;
+  const form=active?.closest('.counter');
+  const control=form && [...form.elements].indexOf(active);
+  const draft=form?.elements.amount.value;
+  const oldDay=state.deck.day;
+  try{
+   await refresh();
+   if(form && state.deck.day===oldDay && (document.activeElement===document.body || document.activeElement===active)){
+    const current=$(`[data-id="${form.dataset.id}"]`);
+    if(active===form.elements.amount && current && draft!==form.elements.amount.defaultValue){
+     current.elements.amount.value=draft;
+    }
+    current?.elements[control]?.focus({preventScroll:true});
+   }
+  } catch(error){setError('#notice',error.message);}
+ },350);
+}
+
+async function flushQuantity(key,entry){
+ if(entry.saving) return;
+ entry.saving=true;
+ try{
+  let amount;
+  do {
+   if(state?.user?.id!==entry.owner) return;
+   amount=entry.amount;
+   await api('quantity',{id:entry.id,day:entry.day,amount});
+   if(state.deck.day===entry.day && state.user?.id===entry.owner){
+    const card=state.deck.daily.find(item=>item.id===entry.id);
+    if(card) state.quantities=[...state.quantities.filter(item=>item.exercise!==entry.id),{exercise:entry.id,amount,points:estimatedPoints(card,amount)}];
+   }
+  } while(entry.amount!==amount);
+ } catch(error){
+  setError('#notice','Änderung nicht gespeichert. '+error.message);
+ } finally {
+  clearTimeout(entry.timer);
+  quantityQueue.delete(key);
+  refreshAfterQuantities();
+ }
+}
+
+function saveAmount(form, delta) {
+ if(!state?.user){showAuth();return;}
+ if(busy) return;
  const field=form.elements.amount;
  if(!form.reportValidity()) return;
  const amount=Math.min(10000,Math.max(0,Number(field.value)+delta));
  const id=form.dataset.id;
- const focusSelector=control?.dataset.delta
-  ? `[data-id="${id}"] [data-delta="${control.dataset.delta}"]`
-  : `[data-id="${id}"] input`;
- change('quantity',{id,day:state.deck.day,amount},focusSelector);
+ const card=state.deck.daily.find(item=>item.id===id);
+ const key=state.user.id+':'+state.deck.day+':'+id;
+ const entry=quantityQueue.get(key)||{id,day:state.deck.day,owner:state.user.id,saving:false};
+ entry.amount=amount;
+ quantityQueue.set(key,entry);
+ field.value=amount;
+ field.defaultValue=amount;
+ updateQuantityCard(form,card,amount);
+ setError('#notice');
+ clearTimeout(entry.timer);
+ entry.timer=setTimeout(()=>flushQuantity(key,entry),180);
 }
 
 $('#daily').addEventListener('click',event=>{
  const button=event.target.closest('[data-delta]');
- if(button) saveAmount(button.form,Number(button.dataset.delta),button);
+ if(button) saveAmount(button.form,Number(button.dataset.delta));
 });
 $('#daily').addEventListener('submit',event=>{
  event.preventDefault();
