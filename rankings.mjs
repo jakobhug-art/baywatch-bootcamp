@@ -1,3 +1,8 @@
+export function seasonStart(day){
+ const month=Number(day.slice(5,7));
+ return day.slice(0,5)+String(month-(month+1)%2).padStart(2,'0')+'-01';
+}
+
 export function setupRankings(db,{legacyCount,monthTarget,monthBonus}){
  db.exec(`
   CREATE TABLE IF NOT EXISTS point_resets(id INTEGER PRIMARY KEY, day TEXT NOT NULL, admin INTEGER NOT NULL REFERENCES users(id));
@@ -44,7 +49,7 @@ export function setupRankings(db,{legacyCount,monthTarget,monthBonus}){
   const month=Number(deck.day.slice(5,7))-1;
   const first=month-month%2;
   const date=(offset,day=1)=>new Date(Date.UTC(year,first+offset,day)).toISOString().slice(0,10);
-  const start=date(0);
+  const start=seasonStart(deck.day);
   const end=date(2,0);
   const previousStart=date(-2);
   const previousEnd=date(0,0);

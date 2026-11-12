@@ -11,7 +11,7 @@ const policy=[
  "script-src 'self'",
  "style-src 'self' https://fonts.googleapis.com",
  "font-src https://fonts.gstatic.com",
- "img-src 'self' blob:",
+ "img-src 'self' blob: "+url,
  "media-src 'self' blob: "+url,
  'connect-src '+url,
  "object-src 'none'",
@@ -34,4 +34,4 @@ for(const oldPortrait of ['bootcamp-portrait.jpg','bootcamp-portrait-2.jpg']){
  rmSync('dist/'+oldPortrait,{force:true});
 }
 writeFileSync('dist/index.html',html);
-for(const asset of ['app.js','style.css']) copyFileSync(asset,'dist/'+asset);
+for(const asset of ['app.js','style.css','season-media.mjs']) copyFileSync(asset,'dist/'+asset);

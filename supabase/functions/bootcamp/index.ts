@@ -13,6 +13,9 @@ const loginAddress = (handle: string) => digest(handle.toLowerCase()).toString("
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const audioTypes = ["audio/webm", "audio/ogg", "audio/mp4"];
 const voiceFiles = admin.storage.from("bootcamp-voice");
+const workoutFiles = admin.storage.from("bootcamp-workouts");
+const seasonDate = /^\d{4}-(01|03|05|07|09|11)-01$/;
+type SeasonFile = { bucket: string; path: string; filename: string };
 const cors = {
   "Access-Control-Allow-Origin": frontend,
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -44,6 +47,43 @@ Deno.serve(async (request) => {
   const auth = createClient(url, anonKey, options);
   try {
     const token = request.headers.get("authorization")?.match(/^Bearer ([\w.-]+)$/i)?.[1];
+    const gallery = path?.match(/^\/gallery(?:\/(\d{1,16}))?$/);
+    const media = path?.match(/^\/admin\/media(?:\/(\d{4}-\d{2}-\d{2}))?$/);
+    if ((gallery || media) && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      if (gallery) {
+        const args = { p_user: data.user.id, p_id: gallery[1] ?? null };
+        if (!gallery[1]) return rpc("bootcamp_workout_gallery", args);
+        const photo = await admin.rpc("bootcamp_workout_gallery", args);
+        if (photo.error || !photo.data) return json({ error: "Foto nicht gefunden." }, 404);
+        const signed = await workoutFiles.createSignedUrl(photo.data, 600);
+        if (signed.error) return json({ error: "Foto nicht verfügbar." }, 404);
+        return json({ url: signed.data.signedUrl });
+      }
+      if (!media?.[1]) return rpc("bootcamp_media_seasons", { p_admin: data.user.id });
+      if (!seasonDate.test(media[1])) return json({ error: "Ungültige Season." }, 400);
+      const manifest = await rpc("bootcamp_media_manifest", { p_admin: data.user.id, p_start: media[1] });
+      if (!manifest.ok) return manifest;
+      const files: SeasonFile[] = await manifest.json();
+      const signedFiles: { filename: string; url: string }[] = [];
+      for (const bucket of ["bootcamp-workouts", "bootcamp-voice"]) {
+        const group = files.filter(file => file.bucket === bucket);
+        for (let start = 0; start < group.length; start += 100) {
+          const batch = group.slice(start, start + 100);
+          const signed = await admin.storage.from(bucket).createSignedUrls(batch.map(file => file.path), 3600);
+          if (signed.error || signed.data.length !== batch.length) return json({ error: "Der Download konnte nicht vorbereitet werden." }, 502);
+          const links = new Map(signed.data.map(file => [file.path, file.signedUrl]));
+          for (const file of batch) {
+            const url = links.get(file.path);
+            if (!url) return json({ error: "Eine Datei für den Download fehlt." }, 409);
+            signedFiles.push({ filename: file.filename, url });
+          }
+        }
+      }
+      return json(signedFiles);
+    }
     if (path === "/state" && request.method === "GET") {
       if (!token) return json({ user: null });
       const { data, error } = await auth.auth.getUser(token);
@@ -102,7 +142,7 @@ Deno.serve(async (request) => {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > (path === "/coins/buy" ? 810000 : 4096)) {
+      if (size > (path === "/coins/buy" ? 810000 : path === "/workout/finish" ? 220000 : 4096)) {
         await reader.cancel();
         return json({ error: "Anfrage zu groß." }, 413);
       }
@@ -149,16 +189,51 @@ Deno.serve(async (request) => {
     }
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
-      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/voice-archive/share", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
-    if (path === "/voice-archive/share") {
-      if (!Number.isSafeInteger(input.id) || input.id < 1 || typeof input.shared !== "boolean") return json({ error: "Ungültige Freigabe." }, 400);
-      return rpc("bootcamp_share_voice", { p_user: data.user.id, p_id: input.id, p_shared: input.shared });
+    if (path === "/admin/media/delete") {
+      if (typeof input.season !== "string" || !seasonDate.test(input.season) || input.confirm !== input.season) {
+        return json({ error: "Bestätige die abgeschlossene Season." }, 400);
+      }
+      const manifest = await rpc("bootcamp_media_manifest", { p_admin: data.user.id, p_start: input.season, p_limit: 61 });
+      if (!manifest.ok) return manifest;
+      const files: SeasonFile[] = await manifest.json();
+      for (const bucket of ["bootcamp-workouts", "bootcamp-voice"]) {
+        const paths = files.slice(0, 60).filter(file => file.bucket === bucket).map(file => file.path);
+        if (!paths.length) continue;
+        const { error } = await admin.storage.from(bucket).remove(paths);
+        if (error) return json({ error: "Das Löschen wurde unterbrochen. Versuche es erneut." }, 502);
+        const forgotten = await rpc("bootcamp_forget_media", { p_admin: data.user.id, p_bucket: bucket, p_paths: paths });
+        if (!forgotten.ok) return forgotten;
+      }
+      return json({ more: files.length > 60 });
     }
     if (path === "/workout/finish" && typeof input.day === "string") {
-      return rpc("bootcamp_finish_workout", { p_user: data.user.id, p_day: input.day });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day) || typeof input.photo !== "string"
+        || input.photo.length > 213336 || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.photo)) {
+        return json({ error: "Wähle ein Foto für deinen Workout-Abschluss." }, 400);
+      }
+      let photo: Uint8Array;
+      try { photo = Uint8Array.from(atob(input.photo), byte => byte.charCodeAt(0)); }
+      catch { return json({ error: "Das Foto ist ungültig." }, 400); }
+      if (photo.length > 160000 || photo[0] !== 255 || photo[1] !== 216 || photo[2] !== 255
+        || photo.at(-2) !== 255 || photo.at(-1) !== 217) {
+        return json({ error: "Das Foto muss ein JPEG mit maximal 160 KB sein." }, 400);
+      }
+      const objectPath = data.user.id + "/" + input.day + "-" + crypto.randomUUID() + ".jpg";
+      const uploaded = await workoutFiles.upload(objectPath, photo, { contentType: "image/jpeg", cacheControl: "300" });
+      if (uploaded.error) return json({ error: "Das Foto konnte nicht gespeichert werden." }, 502);
+      const result = await admin.rpc("bootcamp_finish_with_photo", { p_user: data.user.id, p_day: input.day, p_path: objectPath });
+      if (result.data === false || result.error) {
+        const cleanup = await workoutFiles.remove([objectPath]);
+        if (cleanup.error) console.error("Workout photo cleanup failed", cleanup.error.message);
+      }
+      if (!result.error) return json({ ok: true });
+      if (/^PT4[0-9]{2}$/.test(result.error.code)) return json({ error: result.error.message }, Number(result.error.code.slice(2)));
+      console.error("Workout photo could not be linked", result.error.code);
+      return json({ error: "Das Workout konnte nicht abgeschlossen werden." }, 500);
     }
     if (path === "/admin/challenges") return rpc("bootcamp_save_challenge", { p_user: data.user.id, p_input: input });
     if (path === "/admin/members" && typeof input.member === "string" && uuid.test(input.member)

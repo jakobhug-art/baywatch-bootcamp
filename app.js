@@ -304,7 +304,7 @@ function render() {
     <div><dt>Bonuspunkte</dt><dd id="workout-bonus"></dd></div>
     <div><dt>Abzug für offene Ziele</dt><dd id="workout-penalty"></dd></div>
    </dl>
-   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Der Abschluss speichert deine Tageswertung endgültig und schaltet das Glücksrad frei.'}</p>
+   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Mit deinem Foto schließt du das Workout ab und schaltest das Glücksrad frei.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
   </article>`:'');
  renderDaySummary(amounts);
@@ -535,6 +535,7 @@ async function refresh() {
  const signedIn=Boolean(state.user);
  if(!signedIn && memberDialog.open) memberDialog.close();
  syncVoiceArchive();
+ syncSeasonMedia();
  for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
  $('#sign-in-panel').hidden=signedIn;
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
@@ -657,7 +658,10 @@ function saveAmount(form, delta) {
 
 $('#daily').addEventListener('click',event=>{
  if(event.target.closest('#workout-finish')){
-  if(!quantityQueue.size && !state.workoutFinished) change('workout/finish',{day:state.deck.day},'#wheel-action');
+  if(!busy && !quantityQueue.size && !state.workoutFinished){
+   setError('#workout-photo-status');
+   $('#workout-photo').showModal();
+  }
   return;
  }
  const button=event.target.closest('[data-delta]');
@@ -876,6 +880,7 @@ function coinControls(){
  $('#coin-detail').hidden=!['symbol','exercise'].includes(kind);
  $('#coin-recording').hidden=kind!=='voice';
  $('#rest-info').hidden=!rest;
+ $('#prank-limit').hidden=rest;
  $('#rest-info').textContent=state.workoutFinished?'Dein Workout ist für heute abgeschlossen.':wallet.rest?'Heute ist bereits ein freier Tag.':wallet.vouchers?wallet.vouchers+' Gutschein(e) verfügbar. Beim Einlösen wird ein Gutschein genutzt.':'Du bekommst die regulären Zielpunkte. Der Tag zählt zum Monatsziel.';
  $('#coin-submit').textContent=rest?(wallet.vouchers?'Gutschein für heute einlösen':'Heute freikaufen'):'Senden';
  setOptions(coinForm.elements.detail,kind==='symbol'?wallet.symbols.map((symbol,index)=>[symbol,symbol+' '+symbolNames[index]]):wallet.exercises.map(exercise=>[exercise,exercise]));
@@ -1035,27 +1040,6 @@ function archiveCard(item){
   }finally{play.disabled=false;}
  });
  card.append(title,date,play);
- if(item.own){
-  const share=document.createElement('button');
-  share.type='button';
-  share.className='outline coin-inbox-action';
-  const label=()=>share.textContent=item.shared?'Freigabe zurücknehmen':'Für Gruppe freigeben';
-  label();
-  share.addEventListener('click',async ()=>{
-   share.disabled=true;
-   setError('#voice-archive-status');
-   const shared=!item.shared;
-   try{
-    await api('voice-archive/share',{id:item.id,shared});
-    item.shared=shared;
-    label();
-    if(card.isConnected) setError('#voice-archive-status',shared?'Für die Gruppe freigegeben.':'Freigabe zurückgenommen.');
-   }catch(error){
-    if(card.isConnected) setError('#voice-archive-status',error.message);
-   }finally{share.disabled=false;}
-  });
-  card.append(share);
- }
  card.append(audio);
  return card;
 }
@@ -1095,7 +1079,7 @@ async function sendCoin(action,payload){
   await refresh();
   if(action==='buy' && payload.kind==='voice'){
    if(voiceArchive.open) loadVoiceArchive();
-   setError('#coin-status','Gesendet. Im Sprachnachrichten-Archiv kannst du die Aufnahme für die Gruppe freigeben.');
+   setError('#coin-status','Gesendet. Die Aufnahme ist jetzt im Season-Archiv.');
   }else setError('#coin-status','Gespeichert.');
   return true;
  } catch(error){
@@ -1305,4 +1289,259 @@ memberAdminForm.addEventListener('submit',async event=>{
   await refresh().catch(error=>setError('#notice',error.message));
  }catch(error){setError('#member-admin-status',error.message);}
  finally{button.disabled=false;busy=false;}
+});
+
+const photoDialog=$('#workout-photo');
+const photoForm=$('#workout-photo-form');
+$('#close-workout-photo').addEventListener('click',()=>{if(!busy) photoDialog.close();});
+photoDialog.addEventListener('cancel',event=>{if(busy) event.preventDefault();});
+photoForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(busy || !state?.user || state.workoutFinished || quantityQueue.size) return;
+ const file=photoForm.elements.photo.files[0];
+ if(!file) return;
+ busy=true;
+ const submit=photoForm.querySelector('button');
+ submit.disabled=true;
+ setError('#workout-photo-status','Foto wird vorbereitet …');
+ try{
+  const day=state.deck.day;
+  const {makeWorkoutPhoto}=await import('./season-media.mjs');
+  const photo=await makeWorkoutPhoto(file);
+  setError('#workout-photo-status','Foto wird hochgeladen …');
+  await api('workout/finish',{day,photo});
+  await refresh();
+  photoDialog.close();
+  photoForm.reset();
+  if(galleryVisible) loadGallery();
+ }catch(error){
+  setError('#workout-photo-status',error.message);
+ }finally{
+  submit.disabled=false;
+  busy=false;
+ }
+});
+
+const gallery=$('#workout-gallery');
+const galleryStatus=$('#gallery-status');
+const galleryFigure=$('#gallery-figure');
+const galleryImage=$('#gallery-image');
+const galleryControls=$('#gallery-controls');
+const galleryLinks=new Map();
+let galleryKey;
+let galleryPhotos;
+let galleryVisible=false;
+let galleryPaused=false;
+let galleryIndex=0;
+let galleryRequest=0;
+let galleryPhotoRequest=0;
+
+async function loadGallery(){
+ const request=++galleryRequest;
+ galleryStatus.textContent='Fotos werden geladen …';
+ try{
+  const photos=await api('gallery');
+  if(request!==galleryRequest) return;
+  for(let i=photos.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [photos[i],photos[j]]=[photos[j],photos[i]];
+  }
+  galleryPhotos=photos;
+  galleryControls.hidden=photos.length<2;
+  galleryFigure.hidden=!photos.length;
+  if(photos.length) showGalleryPhoto(0);
+  else galleryStatus.textContent='Das erste Workout-Foto der Season erscheint hier.';
+ }catch(error){
+  if(request===galleryRequest) galleryStatus.textContent=error.message;
+ }
+}
+
+async function showGalleryPhoto(index){
+ if(!galleryPhotos?.length) return;
+ galleryIndex=(index+galleryPhotos.length)%galleryPhotos.length;
+ const {id,day,handle}=galleryPhotos[galleryIndex];
+ const request=++galleryPhotoRequest;
+ try{
+  let link=galleryLinks.get(id);
+  if(!link || link.expires<Date.now()){
+   const {url}=await api('gallery/'+id);
+   if(request!==galleryPhotoRequest) return;
+   link={url,expires:Date.now()+540000};
+   galleryLinks.set(id,link);
+  }
+  galleryImage.alt='Workout-Foto von '+handle;
+  galleryImage.src=link.url;
+  $('#gallery-caption').textContent=handle+' · '+dateFormat.format(new Date(day+'T00:00:00Z'));
+  galleryStatus.textContent='';
+  galleryFigure.hidden=false;
+ }catch(error){
+  if(request===galleryPhotoRequest) galleryStatus.textContent=error.message;
+ }
+}
+
+$('#gallery-prev').addEventListener('click',()=>showGalleryPhoto(galleryIndex-1));
+$('#gallery-next').addEventListener('click',()=>showGalleryPhoto(galleryIndex+1));
+$('#gallery-pause').addEventListener('click',event=>{
+ galleryPaused=!galleryPaused;
+ event.currentTarget.setAttribute('aria-pressed',String(galleryPaused));
+ event.currentTarget.textContent=galleryPaused?'Fortsetzen':'Pausieren';
+});
+galleryImage.addEventListener('error',()=>{galleryStatus.textContent='Das Foto konnte nicht geladen werden.';});
+if(cloudUrl){
+ if('IntersectionObserver' in window){
+  new IntersectionObserver(([entry])=>{
+   galleryVisible=entry.isIntersecting;
+   if(galleryVisible && galleryKey && !galleryPhotos) loadGallery();
+  }).observe(gallery);
+ }else galleryVisible=true;
+ setInterval(()=>{
+  if(galleryVisible && !galleryPaused && !document.hidden && galleryPhotos?.length>1) showGalleryPhoto(galleryIndex+1);
+ },15000);
+}
+
+const mediaAdmin=$('#media-admin');
+const mediaForm=$('#media-admin-form');
+const mediaSelect=mediaForm.elements.season;
+const mediaDownload=$('#media-download');
+const mediaDelete=$('#media-delete');
+let mediaOwner;
+let mediaRequest=0;
+let mediaBusy=false;
+let mediaDownloaded=false;
+let mediaZipUrl;
+let mediaZipSeason;
+
+function clearMediaDownload(){
+ if(mediaZipUrl) URL.revokeObjectURL(mediaZipUrl);
+ mediaZipUrl=undefined;
+ mediaZipSeason=undefined;
+ mediaDownload.removeAttribute('href');
+ mediaDownload.hidden=true;
+ mediaDownloaded=false;
+ mediaDelete.disabled=true;
+}
+
+function syncSeasonMedia(){
+ const key=cloudUrl&&state.user?state.user.id+':'+state.season.start:null;
+ gallery.hidden=!key;
+ if(key!==galleryKey){
+  galleryKey=key;
+  galleryRequest++;
+  galleryPhotoRequest++;
+  galleryPhotos=undefined;
+  galleryFigure.hidden=true;
+  galleryControls.hidden=true;
+  galleryImage.removeAttribute('src');
+  galleryLinks.clear();
+  galleryStatus.textContent='';
+  if(galleryKey&&galleryVisible) loadGallery();
+ }
+ const adminId=cloudUrl&&state.user?.admin?state.user.id:null;
+ mediaAdmin.hidden=!adminId;
+ if(adminId!==mediaOwner){
+  mediaOwner=adminId;
+  mediaRequest++;
+  clearMediaDownload();
+  mediaSelect.replaceChildren();
+  if(adminId&&mediaAdmin.open) loadMediaSeasons().catch(error=>setError('#media-status',error.message));
+ }
+}
+
+function mediaSize(bytes){
+ return new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(bytes/1000000)+' MB';
+}
+
+async function loadMediaSeasons(){
+ const request=++mediaRequest;
+ const seasons=await api('admin/media');
+ if(request!==mediaRequest) return;
+ const current=state.season.start;
+ const total=seasons.reduce((sum,season)=>sum+Number(season.bytes),0);
+ $('#media-usage').textContent='Fotos und Aufnahmen aller Seasons: '+mediaSize(total)+'.';
+ const closed=seasons.filter(season=>season.start<current);
+ setOptions(mediaSelect,closed.map(season=>{
+  const start=new Date(season.start+'T00:00:00Z');
+  const next=new Date(start);
+  next.setUTCMonth(next.getUTCMonth()+1);
+  return [season.start,monthFormat.format(start)+' – '+monthFormat.format(next)+' · '+season.files+' Dateien · '+mediaSize(season.bytes)];
+ }));
+ $('#media-export').disabled=!closed.length;
+ if(!closed.length) setError('#media-status','Es gibt noch keine Dateien aus abgeschlossenen Seasons.');
+}
+
+mediaAdmin.addEventListener('toggle',()=>{
+ if(mediaAdmin.open&&mediaOwner&&!mediaBusy){
+  loadMediaSeasons().catch(error=>setError('#media-status',error.message));
+ }
+});
+mediaSelect.addEventListener('change',()=>{
+ clearMediaDownload();
+ setError('#media-status');
+});
+mediaForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(!mediaOwner || mediaBusy || !mediaSelect.value) return;
+ const season=mediaSelect.value;
+ const owner=mediaOwner;
+ mediaBusy=true;
+ mediaSelect.disabled=true;
+ $('#media-export').disabled=true;
+ clearMediaDownload();
+ setError('#media-status','ZIP wird vorbereitet …');
+ try{
+  const files=await api('admin/media/'+season);
+  if(!files.length) throw new Error('Für diese Season sind keine Dateien vorhanden.');
+  const {seasonZip}=await import('./season-media.mjs');
+  for(let i=0;i<files.length;i+=4){
+   await Promise.all(files.slice(i,i+4).map(async file=>{
+    const response=await timedFetch(file.url);
+    if(!response.ok) throw new Error('Eine Datei konnte nicht geladen werden. Das ZIP wurde nicht erstellt.');
+    file.bytes=new Uint8Array(await response.arrayBuffer());
+   }));
+   if(owner!==mediaOwner) return;
+   setError('#media-status',Math.min(i+4,files.length)+' / '+files.length+' Dateien geladen.');
+  }
+  mediaZipUrl=URL.createObjectURL(seasonZip(files));
+  mediaZipSeason=season;
+  mediaDownload.href=mediaZipUrl;
+  mediaDownload.download='Baywatch-Bootcamp-'+season+'-Medien.zip';
+  mediaDownload.hidden=false;
+  setError('#media-status','Das ZIP ist bereit. Prüfe die heruntergeladene Datei vor dem Löschen.');
+ }catch(error){
+  if(owner===mediaOwner) setError('#media-status',error.message);
+ }finally{
+  mediaBusy=false;
+  mediaSelect.disabled=false;
+  $('#media-export').disabled=!mediaSelect.value;
+ }
+});
+mediaDownload.addEventListener('click',()=>{
+ mediaDownloaded=true;
+ mediaDelete.disabled=false;
+});
+mediaDelete.addEventListener('click',async ()=>{
+ const season=mediaSelect.value;
+ if(!mediaOwner || mediaBusy || !mediaDownloaded || season!==mediaZipSeason) return;
+ if(!window.confirm('Hast du das ZIP gespeichert und geprüft? Fotos und Aufnahmen dieser Season endgültig löschen?')) return;
+ mediaBusy=true;
+ mediaSelect.disabled=true;
+ mediaDelete.disabled=true;
+ $('#media-export').disabled=true;
+ setError('#media-status','Dateien werden gelöscht …');
+ try{
+  let result;
+  do{
+   result=await api('admin/media/delete',{season,confirm:season});
+  }while(result.more);
+  clearMediaDownload();
+  await loadMediaSeasons();
+  setError('#media-status','Die Dateien dieser Season wurden gelöscht.');
+ }catch(error){
+  setError('#media-status',error.message);
+ }finally{
+  mediaBusy=false;
+  mediaSelect.disabled=false;
+  mediaDelete.disabled=!mediaDownloaded;
+  $('#media-export').disabled=!mediaSelect.value;
+ }
 });

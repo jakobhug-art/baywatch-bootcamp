@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { daily, schedule, exercisePoints, monthTarget, monthBonus, wheel } from './deck.mjs';
 import { setupCoins } from './coins.mjs';
 import { setupChallenges } from './challenges.mjs';
-import { setupRankings } from './rankings.mjs';
+import { setupRankings, seasonStart } from './rankings.mjs';
 
 const db = new DatabaseSync(process.env.REPDECK_DB || 'repdeck.sqlite');
 db.exec(`
@@ -247,20 +247,13 @@ createServer(async (req,res)=>{
    if(!user) fail(401,'Bitte melde dich an.');
    const before=url.searchParams.get('before');
    if(before!==null && !/^\d{1,16}$/.test(before)) fail(400,'Ungültige Seite.');
-   return reply(coins.archive.all(user.id,user.id,before,before));
-  }
-  if(path==='/api/voice-archive/share' && req.method==='POST'){
-   if(!user) fail(401,'Bitte melde dich an.');
-   const input=await body(req);
-   if(!Number.isSafeInteger(input?.id) || input.id<1 || typeof input.shared!=='boolean') fail(400,'Ungültige Freigabe.');
-   if(!coins.shareVoice.run(Number(input.shared),input.id,user.id).changes) fail(404,'Aufnahme nicht gefunden.');
-   return reply({ok:true});
+   return reply(coins.archive.all(seasonStart(deck.day),before,before));
   }
   const voice=path.match(/^\/api\/(voice|voice-archive)\/(\d{1,16})$/);
   if(req.method==='GET' && voice){
    if(!user) fail(401,'Bitte melde dich an.');
    const id=Number(voice[2]);
-   const recording=voice[1]==='voice'?coins.voice.get(id,user.id,user.id,deck.day):coins.archivedVoice.get(id,user.id);
+   const recording=voice[1]==='voice'?coins.voice.get(id,user.id,user.id,deck.day):coins.archivedVoice.get(id,seasonStart(deck.day));
    if(!recording) fail(404,'Aufnahme nicht gefunden.');
    res.writeHead(200,{'Content-Type':recording.detail,'Cache-Control':'private, no-store'});
    return res.end(recording.audio);

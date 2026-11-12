@@ -143,6 +143,13 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 .coin-icon::after{content:"";width:58%;height:58%;border:1px solid currentColor;border-radius:50%}
 #voice-archive-list audio{display:block;max-width:100%;margin-top:8px}
 #voice-archive-more{margin-top:12px}
+.gallery-photo{margin:12px 0;display:grid;gap:10px;justify-items:center}
+.gallery-photo img{display:block;width:100%;height:clamp(220px,42vw,420px);object-fit:contain;background:var(--bg);border-radius:10px}
+.gallery-photo figcaption{color:var(--muted);text-align:center}
+.gallery-controls{display:flex;flex-wrap:wrap;gap:8px}
+#gallery-status:empty{display:none}
+#media-admin select{max-width:100%;padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px}
+#media-download,#media-delete{margin:12px 6px 0 0}
 .wheel-disc{background:conic-gradient(from -18deg,#d8fa76 0deg 36deg,#ff8dc9 36deg 72deg,#83e9ff 72deg 108deg,#bea8ff 108deg 144deg,#ffb183 144deg 180deg,#ffe17a 180deg 216deg,#9df5c1 216deg 252deg,#fa9ea5 252deg 288deg,#d9c3ff 288deg 324deg,#ff729d 324deg)}
 .daily-extra{display:inline-block;margin-top:12px}
 #challenge-editor summary{cursor:pointer;font-weight:700}
