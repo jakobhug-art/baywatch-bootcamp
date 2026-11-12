@@ -193,6 +193,11 @@ async function api(path, payload) {
 function render() {
  const {deck,user,marks,quantities,activeDays,coins} = state;
  $('#challenge-admin').hidden=!user?.admin;
+ $('#member-admin').hidden=!cloudUrl||!user?.admin;
+ if(cloudUrl&&user?.admin){
+  const members=[{id:user.id,handle:user.handle},...coins.friends];
+  setOptions($('#member-admin-form').elements.member,members.map(member=>[member.id,member.handle]));
+ }
  const amounts = visibleAmounts();
  const rest=Boolean(coins?.rest);
  const symbol=coins?.items.find(item=>item.kind==='symbol'&&item.recipient===user.id)?.detail;
@@ -992,4 +997,37 @@ $('#points-reset').addEventListener('submit',async event=>{
   button.disabled=false;
   busy=false;
  }
+});
+const memberAdminForm=$('#member-admin-form');
+let memberAdminRetry;
+memberAdminForm.elements.kind.addEventListener('change',()=>{
+ const reset=memberAdminForm.elements.kind.value==='reset-pranks';
+ $('#member-coin-fields').disabled=reset;
+ $('#member-coin-fields').hidden=reset;
+ $('#member-reset-info').hidden=!reset;
+});
+memberAdminForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(!state?.user?.admin||busy) return;
+ const {member,kind,amount,reason}=memberAdminForm.elements;
+ const reset=kind.value==='reset-pranks';
+ const handle=member.selectedOptions[0]?.textContent;
+ if(reset && !window.confirm('Alle gesendeten und empfangenen Pranks von '+handle+' zurücksetzen?')) return;
+ const payload={member:member.value,kind:reset?'reset-pranks':'coins',
+  delta:reset?null:amount.valueAsNumber*(kind.value==='take'?-1:1),reason:reset?null:reason.value.trim()};
+ const signature=JSON.stringify(payload);
+ if(memberAdminRetry?.signature!==signature) memberAdminRetry={signature,requestId:crypto.randomUUID()};
+ busy=true;
+ const button=memberAdminForm.querySelector('button');
+ button.disabled=true;
+ setError('#member-admin-status');
+ try{
+  const result=await api('admin/members',{...payload,requestId:memberAdminRetry.requestId});
+  if(!result.audioCleanupPending) memberAdminRetry=undefined;
+  const message=reset?handle+' · '+result.removed+' Pranks zurückgesetzt.'
+   :handle+' · Neuer Kontostand '+result.balance+' Münzen.';
+  setError('#member-admin-status',message+(result.audioCleanupPending?' Das Entfernen der Audiodateien kann erneut versucht werden.':''));
+  await refresh().catch(error=>setError('#notice',error.message));
+ }catch(error){setError('#member-admin-status',error.message);}
+ finally{button.disabled=false;busy=false;}
 });

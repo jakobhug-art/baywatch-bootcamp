@@ -139,6 +139,20 @@
    </details>
   </section>
   <section id="challenge-admin" class="section" hidden>
+   <details class="panel" id="member-admin" hidden>
+    <summary>Münzen und Pranks verwalten</summary>
+    <form id="member-admin-form">
+     <label>Konto<select name="member" required></select></label>
+     <label>Aktion<select name="kind"><option value="give">Münzen geben</option><option value="take">Münzen entziehen</option><option value="reset-pranks">Pranks zurücksetzen</option></select></label>
+     <fieldset id="member-coin-fields">
+      <label>Münzen<input name="amount" type="number" min="1" max="100000" step="1" required></label>
+      <label>Grund für den Münzverlauf<input name="reason" maxlength="120" required></label>
+     </fieldset>
+     <p class="hint" id="member-reset-info" hidden>Entfernt gesendete und empfangene Pranks dieses Kontos einschließlich Sprachnachrichten. Kaufpreise werden dabei nicht erstattet.</p>
+     <button class="primary" type="submit">Ausführen</button>
+     <p id="member-admin-status" role="status" hidden></p>
+    </form>
+   </details>
    <details class="panel" id="challenge-editor">
     <summary>Challenges verwalten</summary>
     <p>Tagesänderungen gelten ab dem nächsten Tag, Wochenänderungen ab der nächsten Auslosung am Montag.</p>
@@ -201,7 +215,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.12</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.13</small></footer>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
   <form id="auth-form">

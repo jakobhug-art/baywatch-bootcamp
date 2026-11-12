@@ -185,3 +185,7 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 .workout-card .primary{margin-top:auto}
 .daily:has(.workout-card){grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:650px){.daily:has(.workout-card){grid-template-columns:repeat(2,minmax(0,1fr))}}
+#member-admin summary{cursor:pointer;font-weight:700}
+#member-admin-form{max-width:420px}
+#member-admin-form select{padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
+#member-coin-fields{display:grid;gap:10px;border:1px solid var(--line);border-radius:8px}

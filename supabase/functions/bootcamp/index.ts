@@ -135,7 +135,7 @@ Deno.serve(async (request) => {
     }
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
-      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/admin/challenges"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
@@ -143,6 +143,21 @@ Deno.serve(async (request) => {
       return rpc("bootcamp_finish_workout", { p_user: data.user.id, p_day: input.day });
     }
     if (path === "/admin/challenges") return rpc("bootcamp_save_challenge", { p_user: data.user.id, p_input: input });
+    if (path === "/admin/members" && typeof input.member === "string" && uuid.test(input.member)
+        && typeof input.requestId === "string" && uuid.test(input.requestId)) {
+      const response = await rpc("bootcamp_manage_member", { p_admin: data.user.id, p_member: input.member,
+        p_request: input.requestId, p_kind: input.kind, p_delta: Number.isSafeInteger(input.delta) ? input.delta : null,
+        p_reason: typeof input.reason === "string" ? input.reason : null });
+      if (!response.ok) return response;
+      const result = await response.json();
+      const paths: string[] = result.audioPaths ?? [];
+      let audioCleanupPending = false;
+      for (let start = 0; start < paths.length; start += 100) {
+        const { error } = await voiceFiles.remove(paths.slice(start, start + 100));
+        if (error) audioCleanupPending = true;
+      }
+      return json({ balance: result.balance, removed: result.removed, audioCleanupPending });
+    }
     if (path === "/wheel/spin" && typeof input.day === "string" && [1, 2].includes(input.turn)) {
       const slot = randomInt(wheel.length);
       return rpc("bootcamp_spin", { p_user: data.user.id, p_day: input.day, p_turn: input.turn,
