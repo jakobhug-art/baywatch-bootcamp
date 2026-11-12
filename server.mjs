@@ -191,6 +191,26 @@ createServer(async (req,res)=>{
    }
   }
   const deck=challenges.current();
+  const memberPath=path.match(/^\/api\/members\/(\d+)$/);
+  if(req.method==='GET' && memberPath){
+   if(!user) fail(401,'Bitte melde dich an.');
+   const memberId=Number(memberPath[1]);
+   const member=Number.isSafeInteger(memberId) && db.prepare('SELECT handle FROM users WHERE id=?').get(memberId);
+   if(!member) fail(404,'Mitglied nicht gefunden.');
+   const amounts=new Map(db.prepare('SELECT exercise,amount FROM quantities WHERE user_id=? AND day=?')
+    .all(memberId,deck.day).map(({exercise,amount})=>[exercise,amount]));
+   const weeklyDone=new Set(db.prepare(`
+    SELECT m.exercise FROM marks m JOIN weekly_point_dates d USING(user_id,week,exercise)
+    WHERE m.user_id=? AND m.period=m.week AND m.week=? AND d.day=?
+   `).all(memberId,deck.week,deck.day).map(({exercise})=>exercise));
+   return reply({
+    handle:member.handle,
+    balance:coins.balance(memberId),
+    rest:Boolean(db.prepare('SELECT 1 FROM rest_days WHERE user_id=? AND day=?').get(memberId,deck.day)),
+    daily:deck.daily.map(({id,name,unit,target})=>({name,unit,target,amount:amounts.get(id)??0})),
+    weekly:deck.weekly.filter(([id])=>weeklyDone.has(id)).map(([, ,name])=>name)
+   });
+  }
   if(req.method==='POST' && path==='/api/admin/reset-points'){
    if(!user?.admin) fail(403,'Für diese Aktion brauchst du Adminrechte.');
    const input=await body(req);

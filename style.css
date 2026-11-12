@@ -65,14 +65,26 @@ progress::-webkit-progress-bar{background:#31313f}progress::-webkit-progress-val
 .segments button{padding:5px 12px}
 .segments button[aria-pressed=true]{color:var(--lime);border-color:var(--lime)}
 .ranking{padding:0;list-style:none;margin:10px 0 0}
-.ranking li{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;border-bottom:1px solid var(--line);padding:8px 0;overflow-wrap:anywhere}
+.ranking li{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:8px 0;overflow-wrap:anywhere}
 .ranking li:last-child{border-bottom:0}
 .ranking li span:first-child{color:var(--muted)}
 .ranking strong{color:var(--lime)}
+.member-link{justify-self:start;max-width:100%;border:0;border-radius:6px;padding:4px 6px;margin-inline-start:-6px;background:transparent;color:var(--cyan);text-align:start;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.member-link:hover{background:#29283a}
 .footer{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid var(--line);padding:24px 0;margin-top:40px;color:var(--muted);font-size:13px}
 dialog{width:min(420px,calc(100% - 32px));background:#1c1b27;color:var(--text);border:1px solid var(--line);border-radius:18px;padding:22px}
 dialog::backdrop{background:#080811c9}
 .dialog-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+#member-summary-title{overflow-wrap:anywhere}
+.member-summary-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:18px 0 6px}
+#member-summary-balance{color:var(--lime)}
+.member-summary-daily{margin:8px 0 0;padding:0;list-style:none}
+.member-summary-daily li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0}
+.member-summary-daily li span{overflow-wrap:anywhere}
+.member-summary-daily strong{white-space:nowrap}
+.member-goal-reached{color:var(--lime)}
+#member-summary-weekly-section{margin-top:16px}
+#member-summary-weekly{margin:6px 0 0;padding-inline-start:20px}
 form,form label{display:grid;gap:7px}
 form{gap:14px;margin-top:19px}
 form input{width:100%;border:1px solid var(--line);border-radius:8px;background:#111118;color:var(--text);padding:10px}

@@ -382,6 +382,7 @@ function renderRanking() {
  }
  const list=document.createElement('ol');
  list.className='ranking';
+ const memberIds=new Map((state.coins?.friends||[]).map(member=>[member.handle,member.id]));
  let rank=0;
  let previous=null;
  state[rankingPeriod].forEach(({handle,points},index)=>{
@@ -389,15 +390,76 @@ function renderRanking() {
   previous=points;
   const row=document.createElement('li');
   const place=document.createElement('span');
-  const name=document.createElement('span');
+  const memberId=memberIds.get(handle);
+  const name=document.createElement(memberId?'button':'span');
   const score=document.createElement('strong');
   place.textContent=rank+'.';
   name.textContent=handle+(handle===state.user.handle?' · Du':'');
+  if(memberId){
+   name.type='button';
+   name.className='member-link';
+   name.setAttribute('aria-haspopup','dialog');
+   name.addEventListener('click',()=>showMemberSummary(memberId,handle));
+  }
   score.textContent=points+' P';
   row.append(place,name,score);
   list.append(row);
  });
  target.append(list);
+}
+
+const memberDialog=$('#member-summary');
+let memberSummaryRequest=0;
+$('#close-member-summary').addEventListener('click',()=>memberDialog.close());
+
+async function showMemberSummary(id,handle){
+ const request=++memberSummaryRequest;
+ const owner=state.user.id;
+ const content=$('#member-summary-content');
+ $('#member-summary-title').textContent=handle;
+ content.hidden=true;
+ setError('#member-summary-status','Übersicht wird geladen …');
+ memberDialog.showModal();
+ const isCurrent=()=>request===memberSummaryRequest && memberDialog.open && owner===state.user?.id;
+ try{
+  const summary=await api('members/'+encodeURIComponent(id));
+  if(!isCurrent()) return;
+  $('#member-summary-title').textContent=summary.handle;
+  $('#member-summary-balance').textContent=summary.balance+' 🪙';
+  const daily=$('#member-summary-daily');
+  daily.replaceChildren();
+  let reached=0;
+  for(const {name,unit,target,amount} of summary.daily){
+   const item=document.createElement('li');
+   const label=document.createElement('span');
+   const value=document.createElement('strong');
+   label.textContent=name;
+   value.textContent=amount+' / '+target+' '+unit;
+   if(amount>=target){
+    reached++;
+    value.classList.add('member-goal-reached');
+    value.append(' ✓');
+   }
+   item.append(label,value);
+   daily.append(item);
+  }
+  const status=[reached+' / '+summary.daily.length+' Tagesziele erreicht'];
+  if(summary.rest) status.push('Freier Tag');
+  if(summary.workoutFinished) status.push('Workout abgeschlossen');
+  $('#member-summary-progress').textContent=status.join(' · ');
+  const weekly=$('#member-summary-weekly');
+  weekly.replaceChildren();
+  for(const name of summary.weekly){
+   const item=document.createElement('li');
+   item.textContent=name;
+   weekly.append(item);
+  }
+  $('#member-summary-weekly-section').hidden=!summary.weekly.length;
+  setError('#member-summary-status');
+  content.hidden=false;
+ } catch(error){
+  if(isCurrent()) setError('#member-summary-status',error.message);
+ }
 }
 
 let portraitLoad;
@@ -464,6 +526,7 @@ async function refresh() {
  const hadCloudSession=Boolean(cloudSession);
  state=await api('state');
  const signedIn=Boolean(state.user);
+ if(!signedIn && memberDialog.open) memberDialog.close();
  for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
  $('#sign-in-panel').hidden=signedIn;
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';

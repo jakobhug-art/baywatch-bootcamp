@@ -50,6 +50,14 @@ Deno.serve(async (request) => {
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc("bootcamp_training_state", { p_user: data.user.id });
     }
+    const member = path?.startsWith("/members/") ? path.slice("/members/".length) : null;
+    if (member !== null && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      if (!uuid.test(member)) return json({ error: "Mitglied nicht gefunden." }, 404);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      return rpc("bootcamp_member_summary", { p_user: data.user.id, p_member: member });
+    }
     const portrait = path?.match(/^\/portrait\/([12])$/);
     if (portrait && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);

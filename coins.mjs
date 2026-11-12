@@ -113,5 +113,5 @@ export function setupCoins(db,fail){
   fail(409,'Diese Aktion ist für die Challenge nicht verfügbar.');
  }
  const voice=db.prepare("SELECT detail,audio FROM pranks WHERE id=? AND kind='voice' AND (recipient=? OR sender=?) AND expires>=?");
- return {state,buy,respond,voice,credit,grantRest,transaction};
+ return {state,buy,respond,voice,credit,grantRest,transaction,balance:user=>balance.get(user).amount};
 }

@@ -216,7 +216,23 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.15</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.16</small></footer>
+ <dialog id="member-summary" aria-labelledby="member-summary-title">
+  <div class="dialog-heading">
+   <h2 id="member-summary-title"></h2>
+   <button class="outline" id="close-member-summary" type="button" aria-label="Übersicht schließen">✕</button>
+  </div>
+  <p id="member-summary-status" role="status" hidden></p>
+  <div id="member-summary-content" hidden>
+   <div class="member-summary-meta"><h3>Training heute</h3><span class="pill" id="member-summary-balance" aria-label="Münzstand"></span></div>
+   <p id="member-summary-progress" class="hint"></p>
+   <ul id="member-summary-daily" class="member-summary-daily"></ul>
+   <section id="member-summary-weekly-section" hidden>
+    <h3>Heute erledigte Wochenziele</h3>
+    <ul id="member-summary-weekly"></ul>
+   </section>
+  </div>
+ </dialog>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
   <form id="auth-form">
