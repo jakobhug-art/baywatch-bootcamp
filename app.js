@@ -56,6 +56,11 @@ const dailyTerms = {
  situp:'Bauchaufzug',
  squat:'Kniebeuge'
 };
+const weeklyDifficulty={
+ Leicht:{label:'Einfach',points:45},
+ Mittel:{label:'Mittel',points:60},
+ Schwer:{label:'Schwierig',points:75}
+};
 
 function estimatedPoints(card,amount){
  const extra=Math.min(Math.max(amount-card.target,0),card.target);
@@ -236,7 +241,7 @@ function render() {
  $('#weekly').innerHTML = deck.weekly.map(([id,icon,name,description,points,color,category,difficulty],index)=>{
   const done=marks.some(mark=>mark.exercise===id);
   return `<article class="card ${color}"><div class="card-head"><span class="tile-icon" aria-hidden="true">${icon}</span><span class="points">+${points} P</span></div>
-   <p class="eyebrow">${escapeHtml(category||categories[index])}${difficulty?' · '+escapeHtml(difficulty):''}</p><h3>${escapeHtml(name)}</h3><p class="hint">${escapeHtml(description)}</p>
+   <p class="eyebrow">${escapeHtml(category||categories[index])}${difficulty?' · '+escapeHtml(weeklyDifficulty[difficulty]?.label||difficulty):''}</p><h3>${escapeHtml(name)}</h3><p class="hint">${escapeHtml(description)}</p>
    <button class="mark" type="button" data-mark="${id}" aria-pressed="${done}">${done?'✓ Erledigt':'Als erledigt markieren'}</button>
   </article>`;
  }).join('');
@@ -894,7 +899,8 @@ function showChallengeEntry(){
  fields.step.value=entry?.step??1;
  fields.category.value=entry?.category||categories[0];
  fields.difficulty.value=entry?.difficulty||'Mittel';
- fields.points.value=entry?.points??25;
+ fields.points.readOnly=Boolean(cloudUrl);
+ fields.points.value=cloudUrl?weeklyDifficulty[fields.difficulty.value].points:entry?.points??25;
  $('#challenge-daily').hidden=!daily;
  $('#challenge-daily').disabled=!daily;
  $('#challenge-weekly').hidden=daily;
@@ -933,6 +939,9 @@ challengeEditor.addEventListener('toggle',()=>{
 });
 challengeForm.elements.kind.addEventListener('change',showChallengeOptions);
 challengeForm.elements.entry.addEventListener('change',showChallengeEntry);
+challengeForm.elements.difficulty.addEventListener('change',event=>{
+ if(cloudUrl) challengeForm.elements.points.value=weeklyDifficulty[event.target.value].points;
+});
 for(const name of ['target','goalPoints','unit']) challengeForm.elements[name].addEventListener('input',showChallengeRates);
 challengeForm.addEventListener('submit',async event=>{
  event.preventDefault();

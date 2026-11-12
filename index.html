@@ -110,8 +110,8 @@
    </details>
    <details class="panel info-card">
     <summary>Wochen-Challenges und Monatsziel</summary>
-    <p>Montags um 00:00 Uhr werden drei Aufgaben gezogen, je eine aus Bewegung, Ernährung und Spaß &amp; Abwechslung. Hake sie in derselben Woche ab, um die angezeigten Punkte zu bekommen. Eine einzelne Wochenaufgabe bringt höchstens 75 Punkte.</p>
-    <p>Das Monatsziel zählt vollständige Trainingstage. Bei 12 vollständigen Tagen erhältst du den angezeigten Monatsbonus. Für alle Zeitwechsel gilt die Berliner Uhrzeit.</p>
+    <p>Montags um 00:00 Uhr werden drei Aufgaben gezogen, je eine aus Bewegung, Ernährung und Spaß &amp; Abwechslung. Hake sie in derselben Woche ab. Einfache Aufgaben bringen 45 Punkte, mittlere 60 und schwierige 75.</p>
+    <p>Das Monatsziel bringt 250 Bonuspunkte für 12 vollständige Trainingstage. Für alle Zeitwechsel gilt die Berliner Uhrzeit.</p>
    </details>
    <details class="panel info-card">
     <summary>Glücksrad</summary>
@@ -158,7 +158,7 @@
      <fieldset id="challenge-weekly" hidden>
       <legend>Wochenaufgabe</legend>
       <label>Kategorie<select name="category"><option>Bewegung</option><option>Ernährung</option><option>Spaß &amp; Abwechslung</option></select></label>
-      <label>Schwierigkeit<select name="difficulty"><option>Leicht</option><option selected>Mittel</option><option>Schwer</option></select></label>
+      <label>Schwierigkeit<select name="difficulty"><option value="Leicht">Einfach</option><option selected>Mittel</option><option value="Schwer">Schwierig</option></select></label>
       <label>Punkte<input name="points" type="number" min="1" max="75" value="25"></label>
      </fieldset>
      <label class="challenge-enabled"><input name="enabled" type="checkbox" checked> Aktiv</label>
@@ -201,7 +201,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.11</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.12</small></footer>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
   <form id="auth-form">
