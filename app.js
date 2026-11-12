@@ -114,7 +114,12 @@ function renderDaySummary(amounts){
  $('#workout-base').textContent=earnedBase+' / '+availableBase+' P';
  $('#workout-bonus').textContent=earnedBonus+' / '+availableBonus+' P';
  $('#workout-photo-bonus').textContent=signed(photoBonus)+' P';
- $('#workout-penalty').textContent=signed(-10*(deck.daily.length-reached))+' P';
+ const penalty=-10*(deck.daily.length-reached);
+ const workoutPoints=earnedBase+earnedBonus+penalty;
+ $('#workout-penalty').textContent=signed(penalty)+' P';
+ $('#workout-total').textContent=(workoutPoints+photoBonus)+' P';
+ $('#workout-total-with-photo').textContent=(workoutPoints+10)+' P';
+ $('#workout-total-without-photo').textContent=(workoutPoints-20)+' P';
  $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size);
 }
 
@@ -320,6 +325,14 @@ function render() {
      <dd id="workout-photo-bonus" ${state.workoutFinished?'':'hidden'}></dd>
     </div>
     <div><dt>Abzug für offene Ziele</dt><dd id="workout-penalty"></dd></div>
+    <div class="workout-total">
+     <dt>Gesamtstand</dt>
+     <dd class="workout-photo-options" ${state.workoutFinished?'hidden':''}>
+      <span>Mit Foto <strong id="workout-total-with-photo"></strong></span>
+      <span>Ohne Foto <strong id="workout-total-without-photo"></strong></span>
+     </dd>
+     <dd id="workout-total" ${state.workoutFinished?'':'hidden'}></dd>
+    </div>
    </dl>
    <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>

@@ -235,6 +235,8 @@ form .challenge-enabled input{width:auto}
 .workout-card .primary:hover{background:color-mix(in srgb,var(--tone) 75%,white)}
 .workout-photo-options{text-align:right}
 .workout-photo-options span{display:block;white-space:nowrap}
+.workout-total{margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
+.workout-total dt,.workout-total dd{color:var(--tone);font-weight:700}
 .daily:has(.workout-card){grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:650px){
  .daily:has(.workout-card){grid-template-columns:repeat(2,minmax(0,1fr))}
