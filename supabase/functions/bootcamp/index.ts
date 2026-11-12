@@ -54,6 +54,11 @@ Deno.serve(async (request) => {
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       if (gallery) {
+        const member = new URL(request.url).searchParams.get("member");
+        if (!gallery[1] && member !== null) {
+          if (!uuid.test(member)) return json({ error: "Mitglied nicht gefunden." }, 404);
+          return rpc("bootcamp_member_gallery", { p_user: data.user.id, p_member: member });
+        }
         const args = { p_user: data.user.id, p_id: gallery[1] ?? null };
         if (!gallery[1]) return rpc("bootcamp_workout_gallery", args);
         const photo = await admin.rpc("bootcamp_workout_gallery", args);
@@ -64,9 +69,9 @@ Deno.serve(async (request) => {
       }
       if (!media?.[1]) return rpc("bootcamp_media_seasons", { p_admin: data.user.id });
       if (!seasonDate.test(media[1])) return json({ error: "Ungültige Season." }, 400);
-      const manifest = await rpc("bootcamp_media_manifest", { p_admin: data.user.id, p_start: media[1] });
+      const manifest = await rpc("bootcamp_prepare_media_backup", { p_admin: data.user.id, p_season: media[1] });
       if (!manifest.ok) return manifest;
-      const files: SeasonFile[] = await manifest.json();
+      const { backupId, files }: { backupId: string; files: SeasonFile[] } = await manifest.json();
       const signedFiles: { filename: string; url: string }[] = [];
       for (const bucket of ["bootcamp-workouts", "bootcamp-voice"]) {
         const group = files.filter(file => file.bucket === bucket);
@@ -82,7 +87,7 @@ Deno.serve(async (request) => {
           }
         }
       }
-      return json(signedFiles);
+      return json({ backupId, files: signedFiles });
     }
     if (path === "/state" && request.method === "GET") {
       if (!token) return json({ user: null });
@@ -194,10 +199,12 @@ Deno.serve(async (request) => {
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
     if (path === "/admin/media/delete") {
-      if (typeof input.season !== "string" || !seasonDate.test(input.season) || input.confirm !== input.season) {
-        return json({ error: "Bestätige die abgeschlossene Season." }, 400);
+      if (typeof input.backupId !== "string" || !uuid.test(input.backupId)
+        || !["photos", "voice", "all"].includes(input.kind) || input.confirm !== true) {
+        return json({ error: "Bestätige die heruntergeladene Sicherung." }, 400);
       }
-      const manifest = await rpc("bootcamp_media_manifest", { p_admin: data.user.id, p_start: input.season, p_limit: 61 });
+      const selected = input.kind === "photos" ? "bootcamp-workouts" : input.kind === "voice" ? "bootcamp-voice" : null;
+      const manifest = await rpc("bootcamp_media_backup_batch", { p_admin: data.user.id, p_backup: input.backupId, p_bucket: selected });
       if (!manifest.ok) return manifest;
       const files: SeasonFile[] = await manifest.json();
       for (const bucket of ["bootcamp-workouts", "bootcamp-voice"]) {
@@ -205,7 +212,9 @@ Deno.serve(async (request) => {
         if (!paths.length) continue;
         const { error } = await admin.storage.from(bucket).remove(paths);
         if (error) return json({ error: "Das Löschen wurde unterbrochen. Versuche es erneut." }, 502);
-        const forgotten = await rpc("bootcamp_forget_media", { p_admin: data.user.id, p_bucket: bucket, p_paths: paths });
+        const forgotten = await rpc("bootcamp_remove_backed_up_media", {
+          p_admin: data.user.id, p_backup: input.backupId, p_bucket: bucket, p_paths: paths,
+        });
         if (!forgotten.ok) return forgotten;
       }
       return json({ more: files.length > 60 });

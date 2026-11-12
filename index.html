@@ -39,24 +39,23 @@
    <button class="outline portrait-retry" type="button" id="portrait-retry" hidden>Fotos erneut laden</button>
    </figure>
   </section>
+  <section class="section" id="workout-gallery" aria-labelledby="gallery-title" hidden>
+   <div class="section-heading gallery-heading">
+    <h2 id="gallery-title">Workout-Galerie</h2>
+    <div id="gallery-controls" class="gallery-controls" hidden>
+     <button class="outline" id="gallery-prev" type="button" aria-label="Vorherige Fotos">←</button>
+     <button class="outline" id="gallery-pause" type="button" aria-pressed="false">Pausieren</button>
+     <button class="outline" id="gallery-next" type="button" aria-label="Nächste Fotos">→</button>
+    </div>
+   </div>
+   <p id="gallery-status" role="status"></p>
+   <div class="gallery-grid" id="gallery-grid"></div>
+  </section>
   <section id="heute" class="section">
    <div class="section-heading"><div><p class="eyebrow accent">TÄGLICHES TRAINING</p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
    <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Je fehlendem Ziel werden beim Abschluss oder am Tagesende 10 Punkte abgezogen.</p>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
-  </section>
-  <section class="section" id="workout-gallery" aria-labelledby="gallery-title" hidden>
-   <div class="section-heading"><h2 id="gallery-title">Workout-Galerie</h2></div>
-   <p id="gallery-status" role="status"></p>
-   <figure id="gallery-figure" class="panel gallery-photo" hidden>
-    <img id="gallery-image" alt="">
-    <figcaption id="gallery-caption"></figcaption>
-   </figure>
-   <div id="gallery-controls" class="gallery-controls" hidden>
-    <button class="outline" id="gallery-prev" type="button">Zurück</button>
-    <button class="outline" id="gallery-pause" type="button" aria-pressed="false">Pausieren</button>
-    <button class="outline" id="gallery-next" type="button">Weiter</button>
-   </div>
   </section>
   <section id="gluecksrad" class="section">
    <div class="section-heading"><h2>Glücks- & Pechrad</h2><span class="pill">Freiwillig · täglich</span></div>
@@ -128,7 +127,7 @@
     <summary>Tageschallenge und Punkte</summary>
     <p>Trag deine Wiederholungen oder Sekunden mit Plus und Minus ein. Du kannst die Menge auch direkt eintippen und speichern. Auf jeder Karte stehen das Soll und die beiden Punktesätze.</p>
     <p>Bis zum Soll zählen deine Punkte anteilig. Oberhalb des Solls zählt jede zusätzliche Wiederholung oder Sekunde ein Viertel so viel. Der Bonus endet beim doppelten Soll oder sobald die Übung 75 Punkte erreicht. Es zählen ganze Punkte, jeweils abgerundet für Grundwertung und Bonus.</p>
-    <p>Unter „Workout abschließen“ siehst du Grundpunkte, Bonuspunkte und Abzüge. Der Abschluss speichert deine Tageswertung und schaltet das Glücksrad frei. Je fehlendem Ziel gehen dann 10 Punkte ab. Ohne manuellen Abschluss wird der Abzug um Mitternacht gebucht. Einen freien Tag kannst du vor dem Abschluss einsetzen.</p>
+    <p>Unter „Workout abschließen“ siehst du Grundpunkte, Bonuspunkte und Abzüge. Mit einem Foto bekommst du beim Abschluss 10 Punkte extra und schaltest das Glücksrad frei. Je fehlendem Ziel gehen 10 Punkte ab. Ohne manuellen Abschluss wird der Abzug um Mitternacht gebucht. Einen freien Tag kannst du vor dem Abschluss einsetzen.</p>
    </details>
    <details class="panel info-card">
     <summary>Wochen-Challenges und Monatsziel</summary>
@@ -166,11 +165,15 @@
     <summary>Season-Dateien sichern</summary>
     <p id="media-usage" class="hint"></p>
     <form id="media-admin-form">
-     <label>Abgeschlossene Season<select name="season" required></select></label>
+     <label>Season<select name="season" required></select></label>
      <button class="outline" id="media-export" type="submit">ZIP vorbereiten</button>
     </form>
     <a class="primary" id="media-download" hidden>ZIP herunterladen</a>
-    <button class="outline" id="media-delete" type="button" disabled>Gesicherte Dateien löschen</button>
+    <div class="media-delete-actions">
+     <button class="outline" data-delete-media="photos" type="button" disabled>Gesicherte Fotos löschen</button>
+     <button class="outline" data-delete-media="voice" type="button" disabled>Gesicherte Sprachnachrichten löschen</button>
+     <button class="outline" data-delete-media="all" type="button" disabled>Beides löschen</button>
+    </div>
     <p id="media-status" role="status" hidden></p>
    </details>
    <details class="panel" id="member-admin" hidden>
@@ -249,13 +252,13 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.19</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.20</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>
    <button class="outline" id="close-workout-photo" type="button" aria-label="Schließen">✕</button>
   </div>
-  <p>Dein Foto erscheint in der Workout-Galerie der laufenden Season. Alle angemeldeten Mitglieder können es sehen.</p>
+  <p>Für den Abschluss mit Foto bekommst du 10 Punkte extra. Alle angemeldeten Mitglieder können das Foto in der Galerie der laufenden Season sehen.</p>
   <form id="workout-photo-form">
    <label>Foto auswählen<input name="photo" type="file" accept="image/*" required></label>
    <button class="primary" type="submit">Foto hochladen und abschließen</button>
@@ -269,14 +272,29 @@
   </div>
   <p id="member-summary-status" role="status" hidden></p>
   <div id="member-summary-content" hidden>
-   <div class="member-summary-meta"><h3>Training heute</h3><span class="pill" id="member-summary-balance"></span></div>
-   <p id="member-summary-progress" class="hint"></p>
-   <ul id="member-summary-daily" class="member-summary-daily"></ul>
-   <section id="member-summary-weekly-section" hidden>
-    <h3>Heute erledigte Wochenziele</h3>
-    <ul id="member-summary-weekly"></ul>
+   <div>
+    <div class="member-summary-meta"><h3>Training heute</h3><span class="pill" id="member-summary-balance"></span></div>
+    <p id="member-summary-progress" class="hint"></p>
+    <ul id="member-summary-daily" class="member-summary-daily"></ul>
+    <section id="member-summary-weekly-section" hidden>
+     <h3>Heute erledigte Wochenziele</h3>
+     <ul id="member-summary-weekly"></ul>
+    </section>
+   </div>
+   <section id="member-gallery" hidden>
+    <h3>Workout-Fotos</h3>
+    <p class="hint" id="member-gallery-status" role="status"></p>
+    <div id="member-gallery-grid" class="gallery-grid"></div>
+    <button class="outline" id="member-gallery-more" type="button" hidden>Weitere Fotos anzeigen</button>
    </section>
   </div>
+ </dialog>
+ <dialog id="photo-preview" aria-labelledby="photo-preview-title">
+  <div class="dialog-heading">
+   <h3 id="photo-preview-title"></h3>
+   <button class="outline" id="close-photo-preview" type="button" aria-label="Foto schließen">✕</button>
+  </div>
+  <img id="photo-preview-image" alt="">
  </dialog>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
