@@ -46,7 +46,7 @@ export function setupCoins(db,fail){
   try{const value=work();db.exec('COMMIT');return value;}
   catch(error){db.exec('ROLLBACK');throw error;}
  }
- function state(user,day){
+ function state(user,day,isAdmin=false){
   const active=db.prepare(`
    SELECT p.id,p.kind,p.detail,p.day,p.expires,p.status,p.sender_done,p.recipient_done,
     p.sender,p.recipient,s.handle AS fromName,r.handle AS toName,
@@ -55,9 +55,11 @@ export function setupCoins(db,fail){
    WHERE p.day<=? AND p.expires>=? ORDER BY p.id DESC
   `).all(user,day,day);
   const week=weekStart(day);
-  const items=active.filter(item=>item.sender===user||item.recipient===user);
-  const groupPranks=active.filter(item=>item.day>=week&&item.status!=='declined'&&
-   (!item.recipient_done||item.kind==='return'&&!item.sender_done));
+  const items=active.filter(item=>isAdmin?item.sender===user||item.recipient===user:
+   item.recipient===user&&(item.kind==='symbol'||(['exercise','return'].includes(item.kind)&&item.status!=='declined'&&!item.recipient_done)) ||
+   item.sender===user&&item.kind==='return'&&item.status==='accepted'&&!item.sender_done);
+  const groupPranks=isAdmin?active.filter(item=>item.day>=week&&item.status!=='declined'&&
+   (!item.recipient_done||item.kind==='return'&&!item.sender_done)):[];
   const nicknames=Object.fromEntries(active.filter(item=>item.kind==='nickname').reverse().map(item=>[item.recipient,item.detail]));
   return {balance:balance.get(user).amount,vouchers:vouchers.all(user).length,prices,symbols,exercises,rest:Boolean(hasRest.get(user,day)),
    friends:db.prepare('SELECT id,handle FROM users WHERE id<>? ORDER BY handle').all(user),
@@ -139,7 +141,7 @@ export function setupCoins(db,fail){
   }
   fail(409,'Diese Aktion ist für die Challenge nicht verfügbar.');
  }
- const voice=db.prepare("SELECT detail,audio FROM pranks WHERE id=? AND kind='voice' AND (recipient=? OR sender=?) AND expires>=?");
+ const voice=db.prepare("SELECT detail,audio FROM pranks WHERE id=? AND kind='voice' AND expires>=?");
  const archivedVoice=db.prepare("SELECT detail,audio FROM pranks WHERE id=? AND kind='voice' AND day>=?");
  const archive=db.prepare(`
   SELECT p.id,p.day,s.handle AS fromName,r.handle AS toName

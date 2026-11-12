@@ -132,6 +132,7 @@ Deno.serve(async (request) => {
       }
       const procedure = voice[1] === "voice" ? "bootcamp_voice_path" : "bootcamp_archived_voice_path";
       const recording = await admin.rpc(procedure, { p_user: data.user.id, p_id: voice[2] });
+      if (recording.error?.code === "PT403") return json({ error: recording.error.message }, 403);
       if (recording.error || !recording.data) return json({ error: "Aufnahme nicht gefunden." }, 404);
       const signed = await voiceFiles.createSignedUrl(recording.data, 60);
       if (signed.error || !signed.data) return json({ error: "Aufnahme nicht verfügbar." }, 404);

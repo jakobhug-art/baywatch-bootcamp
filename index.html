@@ -56,6 +56,8 @@
    <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Je fehlendem Ziel werden beim Abschluss oder am Tagesende 10 Punkte abgezogen.</p>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
+   <div id="daily-extra-card" class="panel" hidden></div>
+   <p id="daily-extra-status" role="status" hidden></p>
   </section>
   <section id="gluecksrad" class="section">
    <div class="section-heading"><h2>Glücks- & Pechrad</h2><span class="pill">Freiwillig · täglich</span></div>
@@ -109,7 +111,7 @@
       <label id="coin-target">Person<select name="target"></select></label>
       <label id="coin-detail" hidden>Auswahl<select name="detail"></select></label>
       <label id="coin-nickname" hidden>Namenszusatz<input name="nickname" minlength="2" maxlength="40" required disabled placeholder="z. B. der Stumpen"><small class="hint" id="nickname-info"></small></label>
-      <div id="coin-recording"><p class="hint">Alle angemeldeten Mitglieder können die Aufnahme während der laufenden Season im Archiv anhören.</p><button class="outline" type="button" id="coin-record">Aufnehmen (max. 20 Sek.)</button><audio id="coin-preview" controls hidden></audio></div>
+      <div id="coin-recording"><p class="hint">Nur Admins können gesendete Aufnahmen anhören.</p><button class="outline" type="button" id="coin-record">Aufnehmen (max. 20 Sek.)</button><audio id="coin-preview" controls hidden></audio></div>
       <p class="hint" id="prank-limit">Je Person und Prank-Art ist von Montag bis Sonntag ein Kauf möglich.</p>
       <p id="rest-info" hidden></p>
       <button class="primary" type="submit" id="coin-submit">Senden</button>
@@ -117,16 +119,16 @@
      <p id="coin-status" role="status" hidden></p>
      <details><summary>Münzverlauf</summary><ul id="coin-history"></ul></details>
     </div>
-    <div class="panel">
+    <div class="panel" id="prank-admin-panel" hidden>
      <h3 id="coin-inbox-heading">Aktuelle Nachrichten & Pranks</h3>
      <p class="hint prank-feed-intro">Laufende Pranks der Gruppe aus dieser Woche.</p>
      <div id="coin-inbox" role="region" aria-labelledby="coin-inbox-heading" tabindex="0"></div>
      <details id="coin-personal" hidden><summary>Weitere eigene Pranks</summary><div id="coin-personal-list"></div></details>
     </div>
    </div>
-   <details class="panel" id="voice-archive">
+   <details class="panel" id="voice-archive" hidden>
     <summary>Sprachnachrichten-Archiv</summary>
-    <p>Alle Sprachnachrichten der laufenden Season sind für angemeldete Mitglieder hörbar.</p>
+    <p>Hier können Admins Sprachnachrichten der laufenden Season anhören.</p>
     <p id="voice-archive-status" role="status" hidden></p>
     <div id="voice-archive-list"></div>
     <button class="outline" id="voice-archive-more" type="button" hidden>Ältere Aufnahmen laden</button>
@@ -156,9 +158,9 @@
    </details>
    <details class="panel info-card">
     <summary>Münzen und Pranks</summary>
-    <p>Im Münzkonto findest du Guthaben, Gutscheine und Münzverlauf. Von Montag bis Sonntag kannst du derselben Person jeden Prank-Typ einmal schicken. Unter „Aktuelle Nachrichten &amp; Pranks“ sehen alle Mitglieder die laufenden Pranks aus der aktuellen Woche.</p>
+    <p>Im Münzkonto findest du Guthaben, Gutscheine und Münzverlauf. Von Montag bis Sonntag kannst du derselben Person jeden Prank-Typ einmal schicken. Die Liste „Aktuelle Nachrichten &amp; Pranks“ sehen nur Admins.</p>
     <ul>
-     <li><strong>Sprachnachricht · 2 Münzen.</strong> Sie spielt bis zu 48 Stunden lang beim erstmaligen Erreichen eines Tagesziels pro Übung automatisch ab. Alle Mitglieder können sie in der laufenden Season im Archiv anhören.</li>
+     <li><strong>Sprachnachricht · 2 Münzen.</strong> Nur Admins können gesendete Aufnahmen anhören.</li>
      <li><strong>Symbol · 5 Münzen.</strong> Das Emoji erscheint sieben Tage lang auf den Tageskarten. Gleiche Symbole werden mit einem Zähler zusammengefasst.</li>
      <li><strong>Extraübung · 6 Münzen.</strong> Die andere Person entscheidet, ob sie die Aufgabe ohne Ranglistenpunkte annimmt. Eine Retourkutsche für 4 Münzen fordert euch beide heraus.</li>
      <li><strong>Namenszusatz · 8 oder 24 Münzen.</strong> Der Zusatz gilt sieben Tage oder bis zum Season-Ende. Rangliste und Profil zeigen den neuesten aktiven Zusatz.</li>
@@ -172,7 +174,7 @@
    </details>
    <details class="panel info-card">
     <summary>Anmeldung, Feedback und Verwaltung</summary>
-    <p>Für die Registrierung brauchst du einen Einladungscode. Fotos, Aufnahmen, Profile und die Prank-Übersicht sind nur für angemeldete Mitglieder zugänglich. Unter <a href="#feedback">Bugs &amp; Ideen</a> kannst du Fehler und Vorschläge melden und ihren Status verfolgen.</p>
+    <p>Für die Registrierung brauchst du einen Einladungscode. Fotos und Profile sind nur für angemeldete Mitglieder zugänglich. Aufnahmen und die Prank-Übersicht sind Admins vorbehalten. Unter <a href="#feedback">Bugs &amp; Ideen</a> kannst du Fehler und Vorschläge melden und ihren Status verfolgen.</p>
     <p>Admins können Übungen und Ziele bearbeiten, Münzen vergeben oder entziehen und Pranks zurücksetzen. Tagesänderungen gelten ab dem nächsten Tag, Wochenänderungen ab der nächsten Auslosung.</p>
     <p>Unter „Season-Dateien sichern“ können Admins Fotos und Sprachnachrichten einer Season als ZIP herunterladen und die gesicherten Dateien anschließend löschen. Der Notfall-Reset der Punkte erfordert das Admin-Passwort und eine Bestätigung.</p>
    </details>
@@ -269,7 +271,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.26</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.27</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>

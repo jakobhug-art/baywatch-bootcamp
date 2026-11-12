@@ -267,8 +267,15 @@ function render() {
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
  renderDaySummary(amounts);
- const extras=coins?.items.filter(item=>['exercise','return'].includes(item.kind)&&item.recipient===user.id&&item.status!=='declined'&&!item.recipient_done)||[];
- $('#daily-extra').hidden=!extras.length;
+ const extras=coins?.items.filter(item=>['exercise','return'].includes(item.kind)&&(
+  item.recipient===user.id&&item.status!=='declined'&&!item.recipient_done ||
+  item.sender===user.id&&item.kind==='return'&&item.status==='accepted'&&!item.sender_done
+ ))||[];
+ const directExtra=$('#daily-extra-card');
+ directExtra.hidden=user.admin||!extras.length;
+ directExtra.replaceChildren();
+ if(!directExtra.hidden) directExtra.append(prankCard(extras[0],coins,user.id,'#daily-extra-status'));
+ $('#daily-extra').hidden=!user.admin||!extras.length;
  $('#daily-extra').textContent=extras.length>1?extras.length+' offene Extraübungen · Ansehen'
   :extras.length?'Extraübung für heute: '+extras[0].detail+' · Ansehen':'';
  $('#week-summary').textContent = marks.length+' / '+deck.weekly.length+' erledigt';
@@ -673,7 +680,7 @@ function saveAmount(form, delta) {
  const amount=Math.min(10000,Math.max(0,Number(field.value)+delta));
  const id=form.dataset.id;
  const card=state.deck.daily.find(item=>item.id===id);
- if(cloudUrl && amount>=card.target) prepareTrainingAudio();
+ if(cloudUrl && state.user.admin && amount>=card.target) prepareTrainingAudio();
  const key=state.user.id+':'+state.deck.day+':'+id;
  const entry=quantityQueue.get(key)||{id,day:state.deck.day,owner:state.user.id,saving:false};
  entry.amount=amount;
@@ -987,6 +994,7 @@ function coinControls(){
 function renderCoins(){
  const wallet=state.coins;
  const owner=state.user?.id;
+ $('#prank-admin-panel').hidden=!state.user?.admin;
  const inbox=$('#coin-inbox');
  const inboxScroll=coinOwner===owner?inbox.scrollTop:0;
  if(coinOwner!==owner){
@@ -1012,6 +1020,7 @@ function renderCoins(){
   showCoins(row,signed(entry.amount),' · '+entry.label+' · '+entry.day);
   $('#coin-history').append(row);
  }
+ if(!state.user?.admin) return;
  const group=wallet.groupPranks??wallet.items;
  const groupIds=new Set(group.map(item=>item.id));
  const personal=wallet.items.filter(item=>!groupIds.has(item.id));
@@ -1028,7 +1037,7 @@ function renderCoins(){
  }
 }
 
-function prankCard(item,wallet,owner){
+function prankCard(item,wallet,owner,statusTarget='#coin-status'){
   const incoming=item.recipient===owner;
   const outgoing=item.sender===owner;
   const card=document.createElement('article');
@@ -1060,11 +1069,11 @@ function prankCard(item,wallet,owner){
    if(item.kind==='return'&&item.status==='accepted') status.textContent+=' · '+(Number(item.sender_done)+Number(item.recipient_done))+' / 2 fertig';
    card.append(status);
    if(incoming&&item.status==='pending'){
-    addButton('Annehmen',()=>sendCoin('respond',{id:item.id,action:'accept'}));
-    addButton('Ablehnen',()=>sendCoin('respond',{id:item.id,action:'decline'}));
+    addButton('Annehmen',()=>sendCoin('respond',{id:item.id,action:'accept'},statusTarget));
+    addButton('Ablehnen',()=>sendCoin('respond',{id:item.id,action:'decline'},statusTarget));
    }
    if(item.status==='accepted'&&(incoming&&!item.recipient_done || outgoing&&item.kind==='return'&&!item.sender_done)){
-    addButton('Erledigt',()=>sendCoin('respond',{id:item.id,action:'done'}));
+    addButton('Erledigt',()=>sendCoin('respond',{id:item.id,action:'done'},statusTarget));
    }
   }
   if(incoming&&item.kind!=='return'&&item.canReturn){
@@ -1074,7 +1083,7 @@ function prankCard(item,wallet,owner){
     setOptions(choices,wallet.exercises.map(exercise=>[exercise,exercise]));
     card.append(choices);
    }
-   addButton('Retourkutsche · 4 Münzen',()=>sendCoin('buy',{kind:'return',source:item.id,detail:choices.value}));
+   addButton('Retourkutsche · 4 Münzen',()=>sendCoin('buy',{kind:'return',source:item.id,detail:choices.value},statusTarget));
   }
   return card;
 }
@@ -1086,7 +1095,8 @@ let archiveRequest=0;
 let archiveBefore=null;
 
 function syncVoiceArchive(){
- const scope=state.user?state.user.id+':'+state.season.start:null;
+ const scope=state.user?.admin?state.user.id+':'+state.season.start:null;
+ voiceArchive.hidden=!scope;
  if(scope===archiveScope) return;
  archiveScope=scope;
  archiveRequest++;
@@ -1138,20 +1148,20 @@ voiceArchive.addEventListener('toggle',()=>{
 });
 archiveMore.addEventListener('click',()=>loadVoiceArchive(true));
 
-async function sendCoin(action,payload){
+async function sendCoin(action,payload,statusTarget='#coin-status'){
  if(busy) return false;
  busy=true;
- setError('#coin-status');
+ setError(statusTarget);
  try{
   await api('coins/'+action,{...payload,day:state.deck.day});
   await refresh();
   if(action==='buy' && payload.kind==='voice'){
    if(voiceArchive.open) loadVoiceArchive();
    setError('#coin-status','Gesendet. Die Aufnahme ist jetzt im Season-Archiv.');
-  }else setError('#coin-status','Gespeichert.');
+  }else setError(statusTarget,'Gespeichert.');
   return true;
  } catch(error){
-  setError('#coin-status',error.message);
+  setError(statusTarget,error.message);
   return false;
  } finally {busy=false;}
 }

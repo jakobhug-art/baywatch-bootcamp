@@ -247,6 +247,7 @@ createServer(async (req,res)=>{
   }
   if(path==='/api/voice-archive' && req.method==='GET'){
    if(!user) fail(401,'Bitte melde dich an.');
+   if(!user.admin) fail(403,'Für diese Aktion brauchst du Adminrechte.');
    const before=url.searchParams.get('before');
    if(before!==null && !/^\d{1,16}$/.test(before)) fail(400,'Ungültige Seite.');
    return reply(coins.archive.all(seasonStart(deck.day),before,before));
@@ -254,8 +255,9 @@ createServer(async (req,res)=>{
   const voice=path.match(/^\/api\/(voice|voice-archive)\/(\d{1,16})$/);
   if(req.method==='GET' && voice){
    if(!user) fail(401,'Bitte melde dich an.');
+   if(!user.admin) fail(403,'Für diese Aktion brauchst du Adminrechte.');
    const id=Number(voice[2]);
-   const recording=voice[1]==='voice'?coins.voice.get(id,user.id,user.id,deck.day):coins.archivedVoice.get(id,seasonStart(deck.day));
+   const recording=voice[1]==='voice'?coins.voice.get(id,deck.day):coins.archivedVoice.get(id,seasonStart(deck.day));
    if(!recording) fail(404,'Aufnahme nicht gefunden.');
    res.writeHead(200,{'Content-Type':recording.detail,'Cache-Control':'private, no-store'});
    return res.end(recording.audio);
@@ -322,7 +324,7 @@ createServer(async (req,res)=>{
    `).all(user.id,deck.month+'-%',daily.length).map(row=>row.day):[];
    const standings=user?rankings.state(deck):{};
    const spins=user?wheelResults.all(user.id,deck.day):[];
-   return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,coins:user?coins.state(user.id,deck.day):null});
+   return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,coins:user?coins.state(user.id,deck.day,Boolean(user.admin)):null});
   }
   fail(404,'Seite nicht gefunden.');
  } catch(error) {

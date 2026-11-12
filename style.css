@@ -144,6 +144,7 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 #coin-area select,#coin-inbox select{max-width:100%;padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px}
 #coin-area audio{display:block;max-width:100%;margin-top:8px}
 #coin-area details{margin-top:14px}
+#coin-area:has(#prank-admin-panel[hidden]){grid-template-columns:minmax(0,1fr)}
 .coin-inbox-action{margin:5px 5px 0 0}
 .prank-feed-intro{margin:8px 0}
 #coin-inbox{max-height:min(24rem,55vh);overflow-y:auto;overflow-wrap:anywhere}
