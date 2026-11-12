@@ -69,6 +69,9 @@ progress::-webkit-progress-bar{background:#31313f}progress::-webkit-progress-val
 .ranking li:last-child{border-bottom:0}
 .ranking li span:first-child{color:var(--muted)}
 .ranking strong{color:var(--lime)}
+.season-prizes{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:8px 0 12px;list-style:none}
+#season-payouts{margin-top:10px}
+#season-payout-list{padding-inline-start:20px;margin:6px 0 0}
 .member-link{justify-self:start;max-width:100%;border:0;border-radius:6px;padding:4px 6px;margin-inline-start:-6px;background:transparent;color:var(--cyan);text-align:start;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .member-link:hover{background:#29283a}
 .footer{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid var(--line);padding:24px 0;margin-top:40px;color:var(--muted);font-size:13px}

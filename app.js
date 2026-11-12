@@ -372,8 +372,12 @@ function renderRanking() {
  const target=$('#ranking');
  const seasonInfo=$('#season-info');
  const winner=$('#season-winner');
+ const prizes=$('#season-prizes');
+ const payouts=$('#season-payouts');
  seasonInfo.hidden=true;
  winner.hidden=true;
+ prizes.hidden=true;
+ payouts.hidden=true;
  for(const button of document.querySelectorAll('[data-ranking]')){
   button.setAttribute('aria-pressed',String(button.dataset.ranking===rankingPeriod));
  }
@@ -385,10 +389,23 @@ function renderRanking() {
   return;
  }
  if(rankingPeriod==='seasonRanking'){
-  const {start,end,winners}=state.season;
+  const {start,end,winners,prizes:amounts=[],previousPayouts=[]}=state.season;
   const date=day=>day.split('-').reverse().join('.');
   seasonInfo.textContent=date(start)+' – '+date(end)+' · Die Gruppe spendiert Platz 1 einen Döner.';
   seasonInfo.hidden=false;
+  prizes.replaceChildren(...amounts.map((amount,index)=>{
+   const item=document.createElement('li');
+   item.className='pill';
+   showCoins(item,'Platz '+(index+1)+' · '+amount);
+   return item;
+  }));
+  prizes.hidden=!amounts.length;
+  $('#season-payout-list').replaceChildren(...previousPayouts.map(({handle,place,coins})=>{
+   const item=document.createElement('li');
+   showCoins(item,'Platz '+place+' · '+handle+' · +'+coins);
+   return item;
+  }));
+  payouts.hidden=!previousPayouts.length;
   if(winners.length){
    winner.textContent='Platz 1 der letzten Runde: '+winners.map(row=>row.handle).join(', ')+' · '+winners[0].points+' P'+(winners.length>1?' · Gleichstand':'');
    winner.hidden=false;

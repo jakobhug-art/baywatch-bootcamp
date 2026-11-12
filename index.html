@@ -87,7 +87,12 @@
     <div class="panel">
      <div class="segments" aria-label="Zeitraum"><button type="button" data-ranking="seasonRanking" aria-pressed="true">2 Monate</button><button type="button" data-ranking="allTimeRanking" aria-pressed="false">All-Time</button><button type="button" data-ranking="ranking" aria-pressed="false">Woche</button><button type="button" data-ranking="monthlyRanking" aria-pressed="false">Monat</button></div>
      <p id="season-info" hidden></p>
+     <ul id="season-prizes" class="season-prizes" aria-label="Münzprämien für diese Season" hidden></ul>
      <p id="season-winner" hidden></p>
+     <details id="season-payouts" hidden>
+      <summary>Münzprämien der letzten Season</summary>
+      <ul id="season-payout-list"></ul>
+     </details>
      <div id="ranking"></div>
     </div>
    </section>
@@ -159,7 +164,7 @@
    </details>
    <details class="panel info-card">
     <summary>Ranglisten und Döner</summary>
-    <p>Die Hauptwertung läuft in festen Zweimonatsblöcken. Platz 1 der vorigen Runde bekommt einen Döner von der Gruppe. Bei Gleichstand werden alle Erstplatzierten angezeigt. All-Time sammelt Punkte über die Runden hinweg. Du kannst auch nach Woche oder Monat schauen.</p>
+    <p>Die Hauptwertung läuft in festen Zweimonatsblöcken. Am Season-Ende bekommen Platz 1, 2 und 3 automatisch 30, 20 und 10 Münzen. Wer mit positiven Punkten denselben Platz erreicht, erhält die volle Prämie für diesen Platz. Bei zwei Erstplatzierten folgt Platz 3. Platz 1 bekommt außerdem einen Döner von der Gruppe. All-Time sammelt Punkte über die Runden hinweg.</p>
    </details>
    <details class="panel info-card">
     <summary>Anmeldung, Feedback und Verwaltung</summary>
@@ -259,7 +264,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.21</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.22</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>

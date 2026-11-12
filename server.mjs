@@ -50,7 +50,7 @@ if(!db.prepare('PRAGMA table_info(wheel_spins)').all().some(column=>column.name=
 const wheelResults=db.prepare('SELECT turn,slot,title,description,initial,reward,completed,bonus FROM wheel_spins WHERE user_id=? AND day=? ORDER BY turn');
 const challenges=setupChallenges(db,fail);
 const coins=setupCoins(db,fail);
-const rankings=setupRankings(db,{legacyCount:daily.length,monthTarget,monthBonus});
+const rankings=setupRankings(db,{legacyCount:daily.length,monthTarget,monthBonus,rewardsStart:seasonStart(schedule().day)});
 // Apply new scoring to the open day while preserving closed days.
 const currentDay=challenges.current();
 const currentAmounts=db.prepare('SELECT user_id,amount FROM quantities WHERE day=? AND exercise=?');
