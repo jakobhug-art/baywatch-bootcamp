@@ -76,7 +76,7 @@ if(process.argv[2]==='--grant-admin'){
  process.exit(0);
 }
 const hash = value => createHash('sha256').update(value).digest('hex');
-const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']]]);
+const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']],['/bootcamp-portrait.jpg',['bootcamp-portrait.jpg','image/jpeg']]]);
 const attempts = new Map();
 const resetAttempts = new Map();
 const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';

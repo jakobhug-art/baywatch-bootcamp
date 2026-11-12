@@ -14,11 +14,11 @@ const quantityQueue = new Map();
 let quantityRefresh;
 const rateFormat = new Intl.NumberFormat('de-DE',{maximumFractionDigits:6});
 const dailyTerms = {
- push:['Geforderte Liegestütze','Liegestütz'],
- plank:['Geforderte Plank-Sekunden','Plank-Sekunde'],
- pull:['Geforderte Klimmzüge','Klimmzug'],
- situp:['Geforderte Bauchaufzüge','Bauchaufzug'],
- squat:['Geforderte Kniebeugen','Kniebeuge']
+ push:'Liegestütz',
+ plank:'Plank-Sekunde',
+ pull:'Klimmzug',
+ situp:'Bauchaufzug',
+ squat:'Kniebeuge'
 };
 
 function estimatedPoints(card,amount){
@@ -139,14 +139,13 @@ function render() {
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name)};
   const {amount=0,points=0} = amounts.get(item.id)||{};
-  const [required,unit]=dailyTerms[item.id]||[item.unit==='Sek.'?'Geforderte Sekunden':'Geforderte Wiederholungen',item.unit==='Sek.'?'Sekunde':'Wiederholung'];
+  const unit=dailyTerms[item.id]||(item.unit==='Sek.'?'Sekunde':'Wiederholung');
   const [normal,bonus]=rates(item);
   return `<article class="card ${item.color}">
    ${symbol?`<span class="prank-symbol" aria-label="Symbol-Prank">${symbol}</span>`:''}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
    <h3>${item.name}</h3>
    <dl class="daily-rates">
-    <div><dt>${required}</dt><dd>${item.target}</dd></div>
     <div><dt>Punkte pro ${unit}</dt><dd>${normal}</dd></div>
     <div><dt>Bonus-Punkte pro ${unit}</dt><dd>${bonus}</dd></div>
    </dl>
