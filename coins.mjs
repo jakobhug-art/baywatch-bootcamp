@@ -28,6 +28,9 @@ export function setupCoins(db,fail){
    SELECT t.user_id,t.day,t.exercise,MAX(t.target,COALESCE(q.amount,0)),MAX(t.points,COALESCE(q.points,0)),1
    FROM targets t LEFT JOIN quantities q ON q.user_id=t.user_id AND q.day=t.day AND q.exercise=t.exercise;
  `);
+ if(!db.prepare('PRAGMA table_info(pranks)').all().some(column=>column.name==='voice_shared')){
+  db.exec('ALTER TABLE pranks ADD COLUMN voice_shared INTEGER NOT NULL DEFAULT 0');
+ }
  const balance=db.prepare('SELECT COALESCE(SUM(amount),0) AS amount FROM coin_entries WHERE user_id=?');
  const credit=db.prepare('INSERT INTO coin_entries(user_id,amount,label,day) VALUES(?,?,?,?)');
  const rest=db.prepare('INSERT OR IGNORE INTO rest_days VALUES(?,?)');
@@ -113,5 +116,13 @@ export function setupCoins(db,fail){
   fail(409,'Diese Aktion ist für die Challenge nicht verfügbar.');
  }
  const voice=db.prepare("SELECT detail,audio FROM pranks WHERE id=? AND kind='voice' AND (recipient=? OR sender=?) AND expires>=?");
- return {state,buy,respond,voice,credit,grantRest,transaction,balance:user=>balance.get(user).amount};
+ const archivedVoice=db.prepare("SELECT detail,audio FROM pranks WHERE id=? AND kind='voice' AND (voice_shared=1 OR ? IN (sender,recipient))");
+ const archive=db.prepare(`
+  SELECT p.id,p.day,s.handle AS fromName,r.handle AS toName,p.sender=? AS own,p.voice_shared AS shared
+  FROM pranks p JOIN users s ON s.id=p.sender JOIN users r ON r.id=p.recipient
+  WHERE p.kind='voice' AND p.audio IS NOT NULL AND (p.voice_shared=1 OR ? IN (p.sender,p.recipient))
+   AND (? IS NULL OR p.id<?) ORDER BY p.id DESC LIMIT 31
+ `);
+ const shareVoice=db.prepare("UPDATE pranks SET voice_shared=? WHERE id=? AND kind='voice' AND audio IS NOT NULL AND sender=?");
+ return {state,buy,respond,voice,archive,archivedVoice,shareVoice,credit,grantRest,transaction,balance:user=>balance.get(user).amount};
 }

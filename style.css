@@ -139,6 +139,10 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 #coin-area audio{display:block;max-width:100%;margin-top:8px}
 #coin-area details{margin-top:14px}
 .coin-inbox-action{margin:5px 5px 0 0}
+.coin-icon{display:inline-grid;place-items:center;vertical-align:-.13em;width:1em;height:1em;border:1px solid #ffe18a;border-radius:50%;background:linear-gradient(145deg,#ffe694,#d98e27);color:#65400d;box-shadow:0 1px 0 #855219}
+.coin-icon::after{content:"";width:58%;height:58%;border:1px solid currentColor;border-radius:50%}
+#voice-archive-list audio{display:block;max-width:100%;margin-top:8px}
+#voice-archive-more{margin-top:12px}
 .wheel-disc{background:conic-gradient(from -18deg,#d8fa76 0deg 36deg,#ff8dc9 36deg 72deg,#83e9ff 72deg 108deg,#bea8ff 108deg 144deg,#ffb183 144deg 180deg,#ffe17a 180deg 216deg,#9df5c1 216deg 252deg,#fa9ea5 252deg 288deg,#d9c3ff 288deg 324deg,#ff729d 324deg)}
 .daily-extra{display:inline-block;margin-top:12px}
 #challenge-editor summary{cursor:pointer;font-weight:700}

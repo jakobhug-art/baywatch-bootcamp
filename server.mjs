@@ -98,7 +98,8 @@ async function body(req,limit=4096) {
  try { return JSON.parse(value); } catch { fail(400,'Ungültige Anfrage.'); }
 }
 createServer(async (req,res)=>{
- const path=new URL(req.url,'http://localhost').pathname;
+ const url=new URL(req.url,'http://localhost');
+ const path=url.pathname;
  const reply=(data,status=200)=>{
   res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
   res.end(JSON.stringify(data));
@@ -242,10 +243,24 @@ createServer(async (req,res)=>{
    else coins.respond(user.id,input,deck.day);
    return reply({ok:true});
   }
-  const voice=path.match(/^\/api\/voice\/(\d+)$/);
+  if(path==='/api/voice-archive' && req.method==='GET'){
+   if(!user) fail(401,'Bitte melde dich an.');
+   const before=url.searchParams.get('before');
+   if(before!==null && !/^\d{1,16}$/.test(before)) fail(400,'Ungültige Seite.');
+   return reply(coins.archive.all(user.id,user.id,before,before));
+  }
+  if(path==='/api/voice-archive/share' && req.method==='POST'){
+   if(!user) fail(401,'Bitte melde dich an.');
+   const input=await body(req);
+   if(!Number.isSafeInteger(input?.id) || input.id<1 || typeof input.shared!=='boolean') fail(400,'Ungültige Freigabe.');
+   if(!coins.shareVoice.run(Number(input.shared),input.id,user.id).changes) fail(404,'Aufnahme nicht gefunden.');
+   return reply({ok:true});
+  }
+  const voice=path.match(/^\/api\/(voice|voice-archive)\/(\d{1,16})$/);
   if(req.method==='GET' && voice){
    if(!user) fail(401,'Bitte melde dich an.');
-   const recording=coins.voice.get(Number(voice[1]),user.id,user.id,deck.day);
+   const id=Number(voice[2]);
+   const recording=voice[1]==='voice'?coins.voice.get(id,user.id,user.id,deck.day):coins.archivedVoice.get(id,user.id);
    if(!recording) fail(404,'Aufnahme nicht gefunden.');
    res.writeHead(200,{'Content-Type':recording.detail,'Cache-Control':'private, no-store'});
    return res.end(recording.audio);

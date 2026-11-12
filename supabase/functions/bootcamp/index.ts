@@ -75,12 +75,18 @@ Deno.serve(async (request) => {
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc(path === "/reports" ? "bootcamp_reports" : "bootcamp_challenges", { p_user: data.user.id });
     }
-    const voice = path?.match(/^\/voice\/(\d+)$/);
-    if (voice && request.method === "GET") {
+    const voice = path?.match(/^\/(voice|voice-archive)\/(\d{1,16})$/);
+    if ((voice || path === "/voice-archive") && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
-      const recording = await admin.rpc("bootcamp_voice_path", { p_user: data.user.id, p_id: voice[1] });
+      if (!voice) {
+        const before = new URL(request.url).searchParams.get("before");
+        if (before !== null && !/^\d{1,16}$/.test(before)) return json({ error: "Ungültige Seite." }, 400);
+        return rpc("bootcamp_voice_archive", { p_user: data.user.id, p_before: before });
+      }
+      const procedure = voice[1] === "voice" ? "bootcamp_voice_path" : "bootcamp_archived_voice_path";
+      const recording = await admin.rpc(procedure, { p_user: data.user.id, p_id: voice[2] });
       if (recording.error || !recording.data) return json({ error: "Aufnahme nicht gefunden." }, 404);
       const signed = await voiceFiles.createSignedUrl(recording.data, 60);
       if (signed.error || !signed.data) return json({ error: "Aufnahme nicht verfügbar." }, 404);
@@ -143,10 +149,14 @@ Deno.serve(async (request) => {
     }
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
-      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/voice-archive/share", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+    if (path === "/voice-archive/share") {
+      if (!Number.isSafeInteger(input.id) || input.id < 1 || typeof input.shared !== "boolean") return json({ error: "Ungültige Freigabe." }, 400);
+      return rpc("bootcamp_share_voice", { p_user: data.user.id, p_id: input.id, p_shared: input.shared });
+    }
     if (path === "/workout/finish" && typeof input.day === "string") {
       return rpc("bootcamp_finish_workout", { p_user: data.user.id, p_day: input.day });
     }
