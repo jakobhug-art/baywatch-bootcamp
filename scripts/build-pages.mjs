@@ -30,4 +30,4 @@ const html=source.replace('</head>',' '+metadata+'\n</head>')
  .replaceAll('./app.js','./app.js?v='+version);
 mkdirSync('dist',{recursive:true});
 writeFileSync('dist/index.html',html);
-for(const asset of ['app.js','style.css','bootcamp-portrait.jpg']) copyFileSync(asset,'dist/'+asset);
+for(const asset of ['app.js','style.css','bootcamp-portrait.jpg','bootcamp-portrait-2.jpg']) copyFileSync(asset,'dist/'+asset);
