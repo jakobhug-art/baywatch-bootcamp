@@ -990,20 +990,20 @@ function renderCoins(){
 const voiceArchive=$('#voice-archive');
 const archiveList=$('#voice-archive-list');
 const archiveMore=$('#voice-archive-more');
-let archiveOwner;
+let archiveScope;
 let archiveRequest=0;
 let archiveBefore=null;
 
 function syncVoiceArchive(){
- const owner=state.user?.id;
- if(owner===archiveOwner) return;
- archiveOwner=owner;
+ const scope=state.user?state.user.id+':'+state.season.start:null;
+ if(scope===archiveScope) return;
+ archiveScope=scope;
  archiveRequest++;
  archiveBefore=null;
  archiveList.replaceChildren();
  archiveMore.hidden=true;
  setError('#voice-archive-status');
- if(!owner) voiceArchive.open=false;
+ if(!scope) voiceArchive.open=false;
  else if(voiceArchive.open) loadVoiceArchive();
 }
 
@@ -1045,7 +1045,7 @@ function archiveCard(item){
 }
 
 async function loadVoiceArchive(append=false){
- if(!archiveOwner) return;
+ if(!archiveScope) return;
  const request=++archiveRequest;
  archiveMore.disabled=true;
  setError('#voice-archive-status','Archiv wird geladen …');
@@ -1338,6 +1338,7 @@ let galleryPhotoRequest=0;
 
 async function loadGallery(){
  const request=++galleryRequest;
+ galleryPhotoRequest++;
  galleryStatus.textContent='Fotos werden geladen …';
  try{
   const photos=await api('gallery');
@@ -1350,7 +1351,10 @@ async function loadGallery(){
   galleryControls.hidden=photos.length<2;
   galleryFigure.hidden=!photos.length;
   if(photos.length) showGalleryPhoto(0);
-  else galleryStatus.textContent='Das erste Workout-Foto der Season erscheint hier.';
+  else{
+   galleryImage.removeAttribute('src');
+   galleryStatus.textContent='Das erste Workout-Foto der Season erscheint hier.';
+  }
  }catch(error){
   if(request===galleryRequest) galleryStatus.textContent=error.message;
  }
