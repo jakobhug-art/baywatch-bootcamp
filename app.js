@@ -12,14 +12,27 @@ let register = false;
 let busy = false;
 const quantityQueue = new Map();
 let quantityRefresh;
+const rateFormat = new Intl.NumberFormat('de-DE',{maximumFractionDigits:6});
+const dailyTerms = {
+ push:['Geforderte Liegestütze','Liegestütz'],
+ plank:['Geforderte Plank-Sekunden','Plank-Sekunde'],
+ pull:['Geforderte Klimmzüge','Klimmzug'],
+ situp:['Geforderte Bauchaufzüge','Bauchaufzug'],
+ squat:['Geforderte Kniebeugen','Kniebeuge']
+};
 
 function estimatedPoints(card,amount){
  const extra=Math.min(Math.max(amount-card.target,0),card.target);
  if(card.goalPoints){
-  return Math.floor(Math.min(amount,card.target)*card.goalPoints/card.target)
-   +Math.floor(extra*card.goalPoints/(4*card.target));
+  return Math.min(75,Math.floor(Math.min(amount,card.target)*card.goalPoints/card.target)
+   +Math.floor(extra*card.goalPoints/(4*card.target)));
  }
  return Math.floor(Math.min(amount,card.target)/card.step)+Math.floor(extra/(4*card.step));
+}
+
+function rates(card){
+ const normal=card.goalPoints?card.goalPoints/card.target:1/card.step;
+ return [rateFormat.format(normal),rateFormat.format(card.goalPoints===75?0:normal/4)];
 }
 
 function visibleAmounts(){
@@ -126,10 +139,18 @@ function render() {
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name),hint:escapeHtml(source.hint)};
   const {amount=0,points=0} = amounts.get(item.id)||{};
+  const [required,unit]=dailyTerms[item.id]||[item.unit==='Sek.'?'Geforderte Sekunden':'Geforderte Wiederholungen',item.unit==='Sek.'?'Sekunde':'Wiederholung'];
+  const [normal,bonus]=rates(item);
   return `<article class="card ${item.color}">
    ${symbol?`<span class="prank-symbol" aria-label="Symbol-Prank">${symbol}</span>`:''}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
-   <h3>${item.name}</h3><p class="hint">${item.hint}</p><p class="hint">${estimatedPoints(item,item.target)} P beim Soll · bis zu +${estimatedPoints(item,item.target*2)-estimatedPoints(item,item.target)} P Bonus</p>
+   <h3>${item.name}</h3><p class="hint">${item.hint}</p>
+   <dl class="daily-rates">
+    <div><dt>${required}</dt><dd>${item.target}</dd></div>
+    <div><dt>Punkte pro ${unit}</dt><dd>${normal}</dd></div>
+    <div><dt>Bonus-Punkte pro ${unit}</dt><dd>${bonus}</dd></div>
+   </dl>
+   <p class="hint">${estimatedPoints(item,item.target)} P beim Soll · maximal ${estimatedPoints(item,item.target*2)} P</p>
    <progress max="${item.target}" value="${Math.min(amount,item.target)}" aria-label="Tagesziel ${item.name}"></progress>
    <p class="progress-label">${amount} / ${item.target} ${item.unit}${amount>=item.target?' · ✓':''}</p>
    <form class="counter" data-id="${item.id}">
@@ -758,6 +779,7 @@ function showChallengeEntry(){
  fields.enabled.checked=entry?.enabled??true;
  fields.unit.value=entry?.unit||'Wdh.';
  fields.target.value=entry?.target??10;
+ fields.goalPoints.value=entry?.goalPoints??60;
  fields.step.value=entry?.step??1;
  fields.category.value=entry?.category||categories[0];
  fields.difficulty.value=entry?.difficulty||'Mittel';
@@ -767,6 +789,20 @@ function showChallengeEntry(){
  $('#challenge-weekly').hidden=daily;
  $('#challenge-weekly').disabled=daily;
  fields.hint.required=!daily;
+ showChallengeRates();
+}
+function showChallengeRates(){
+ const fields=challengeForm.elements;
+ const target=fields.target.valueAsNumber;
+ const goalPoints=fields.goalPoints.valueAsNumber;
+ if(!Number.isInteger(target)||target<1||!Number.isInteger(goalPoints)||goalPoints<1||goalPoints>75){
+  $('#challenge-rate').textContent='';
+  return;
+ }
+ const card={target,goalPoints};
+ const [normal,bonus]=rates(card);
+ const unit=fields.unit.value==='Sek.'?'Sekunde':'Wiederholung';
+ $('#challenge-rate').textContent=normal+' Punkte pro '+unit+' · '+bonus+' Bonus-Punkte pro '+unit+' · maximal '+estimatedPoints(card,target*2)+' Punkte';
 }
 function showChallengeOptions(){
  const fields=challengeForm.elements;
@@ -786,6 +822,7 @@ challengeEditor.addEventListener('toggle',()=>{
 });
 challengeForm.elements.kind.addEventListener('change',showChallengeOptions);
 challengeForm.elements.entry.addEventListener('change',showChallengeEntry);
+for(const name of ['target','goalPoints','unit']) challengeForm.elements[name].addEventListener('input',showChallengeRates);
 challengeForm.addEventListener('submit',async event=>{
  event.preventDefault();
  const fields=challengeForm.elements;
@@ -793,7 +830,7 @@ challengeForm.addEventListener('submit',async event=>{
  if(button.disabled) return;
  const kind=fields.kind.value;
  const entry={id:fields.entry.value,kind,name:fields.name.value,hint:fields.hint.value,enabled:fields.enabled.checked};
- if(kind==='daily') Object.assign(entry,{unit:fields.unit.value,target:fields.target.valueAsNumber,step:fields.step.valueAsNumber});
+ if(kind==='daily') Object.assign(entry,{unit:fields.unit.value,target:fields.target.valueAsNumber,step:fields.step.valueAsNumber,goalPoints:fields.goalPoints.valueAsNumber});
  else Object.assign(entry,{category:fields.category.value,difficulty:fields.difficulty.value,points:fields.points.valueAsNumber});
  button.disabled=true;
  setError('#challenge-status');

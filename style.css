@@ -154,3 +154,11 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 .card,.panel,.counter button,.segments button{transition:border-color .16s ease,filter .16s ease}
 .card:focus-within{border-color:color-mix(in srgb,var(--tone,var(--purple)) 55%,var(--line))}
 @media(prefers-reduced-motion:reduce){.card,.panel,.counter button,.segments button{transition:none}}
+.daily-rates{display:grid;gap:4px;margin:0;font-size:.82rem}
+.daily-rates div{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.daily-rates dt{color:var(--muted)}
+.daily-rates dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums}
+.info-card summary{cursor:pointer;font-weight:700}
+.info-card p,.info-card li,#challenge-rate{color:var(--muted)}
+.info-card a{text-decoration:underline}
+.top nav{flex-wrap:wrap}

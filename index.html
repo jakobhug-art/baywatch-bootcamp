@@ -13,7 +13,7 @@
  <header class="top"><div class="shell top-inner">
   <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
   <nav aria-label="Hauptnavigation">
-   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a>
+   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a><a href="#info">Info</a>
   </nav>
   <button class="outline" id="account">Anmelden</button>
  </div></header>
@@ -29,7 +29,7 @@
   </section>
   <section id="heute" class="section">
    <div class="section-heading"><div><p class="eyebrow accent">TÄGLICHES TRAINING</p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
-   <p class="sub">Jedes erreichte Tagesziel bringt 60 Punkte. Beim doppelten Soll gibt es 15 Bonuspunkte. Am Tagesende werden je fehlendem Ziel 10 Punkte abgezogen.</p>
+   <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Am Tagesende werden je fehlendem Ziel 10 Punkte abgezogen.</p>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
   </section>
@@ -89,6 +89,44 @@
     <div class="panel"><h3>Nachrichten & Pranks</h3><div id="coin-inbox"></div></div>
    </div>
   </section>
+  <section id="info" class="section" aria-labelledby="info-heading">
+   <h2 id="info-heading">So funktioniert die App</h2>
+   <details class="panel info-card" open>
+    <summary>Tageschallenge und Punkte</summary>
+    <p>Trag deine Wiederholungen oder Sekunden mit Plus und Minus ein. Du kannst die Menge auch direkt eintippen und speichern. Auf jeder Karte stehen das Soll und die beiden Punktesätze.</p>
+    <p>Bis zum Soll zählen deine Punkte anteilig. Oberhalb des Solls zählt jede zusätzliche Wiederholung oder Sekunde ein Viertel so viel. Der Bonus endet beim doppelten Soll oder sobald die Übung 75 Punkte erreicht. Es zählen ganze Punkte, jeweils abgerundet für Grundwertung und Bonus.</p>
+    <p>Um Mitternacht beginnt der neue Trainingstag. Je fehlendem Ziel gehen 10 Punkte von deiner Wertung ab. Ein freier Tag ergänzt fehlende Zielpunkte und zählt als vollständig erfüllt.</p>
+   </details>
+   <details class="panel info-card">
+    <summary>Wochen-Challenges und Monatsziel</summary>
+    <p>Montags um 00:00 Uhr werden drei Aufgaben gezogen, je eine aus Bewegung, Ernährung und Spaß &amp; Abwechslung. Hake sie in derselben Woche ab, um die angezeigten Punkte zu bekommen. Eine einzelne Wochenaufgabe bringt höchstens 75 Punkte.</p>
+    <p>Das Monatsziel zählt vollständige Trainingstage. Bei 12 vollständigen Tagen erhältst du den angezeigten Monatsbonus. Für alle Zeitwechsel gilt die Berliner Uhrzeit.</p>
+   </details>
+   <details class="panel info-card">
+    <summary>Glücksrad</summary>
+    <p>Nach allen Tageszielen kannst du freiwillig drehen. Das Rad vergibt Plus- oder Minuspunkte, Zusatzaufgaben, eine Extrarunde oder einen Gutschein für einen freien Tag. Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung holst du dir die 30 Minuspunkte zurück, indem du 30 zusätzliche Liegestütze machst.</p>
+    <p>Pro Tag sind bis zu zwei Drehs möglich. Jeder Dreh hat zusätzlich eine Chance von eins zu drei auf 1–3 Münzen.</p>
+   </details>
+   <details class="panel info-card">
+    <summary>Münzen, Pranks und freie Tage</summary>
+    <p>Im Münzkonto siehst du dein Guthaben, deine Gutscheine und deine Nachrichten.</p>
+    <ul>
+     <li>Für 2 Münzen schickst du eine private Sprachnachricht.</li>
+     <li>Für 5 Münzen platzierst du sieben Tage lang ein Symbol auf den Tageskarten einer Person.</li>
+     <li>Für 6 Münzen schickst du eine freiwillige Extraübung ohne Ranglistenpunkte. Eine Retourkutsche für 4 Münzen fordert euch beide heraus.</li>
+     <li>Für 12 Münzen oder einen Gutschein kaufst du den aktuellen Tag frei. Der Tag zählt fürs Monatsziel und öffnet das Rad.</li>
+    </ul>
+   </details>
+   <details class="panel info-card">
+    <summary>Ranglisten und Döner</summary>
+    <p>Die Hauptwertung läuft in festen Zweimonatsblöcken. Platz 1 der vorigen Runde bekommt einen Döner von der Gruppe. Bei Gleichstand werden alle Erstplatzierten angezeigt. All-Time sammelt Punkte über die Runden hinweg. Du kannst auch nach Woche oder Monat schauen.</p>
+   </details>
+   <details class="panel info-card">
+    <summary>Anmeldung, Feedback und Verwaltung</summary>
+    <p>Für die Registrierung brauchst du einen Einladungscode. Unter <a href="#feedback">Bugs &amp; Ideen</a> kannst du Meldungen einreichen und ihren Status verfolgen.</p>
+    <p>Admins können Aufgaben und Ziele bearbeiten. Tagesänderungen gelten ab dem nächsten Tag, Wochenänderungen ab der nächsten Auslosung. Der Notfall-Reset der Punkte erfordert das Admin-Passwort und eine ausdrückliche Bestätigung.</p>
+   </details>
+  </section>
   <section id="challenge-admin" class="section" hidden>
    <details class="panel" id="challenge-editor">
     <summary>Challenges verwalten</summary>
@@ -102,13 +140,15 @@
       <legend>Tagesziel und Wertung</legend>
       <label>Einheit<select name="unit"><option>Wdh.</option><option>Sek.</option></select></label>
       <label>Zielmenge<input name="target" type="number" min="1" max="10000" value="10"></label>
+      <label>Punkte beim Soll<input name="goalPoints" type="number" min="1" max="75" value="60" required></label>
       <label>Schrittweite für Plus und Minus<input name="step" type="number" min="1" max="10000" value="1"></label>
+      <output id="challenge-rate" for="target goalPoints unit" aria-live="polite"></output>
      </fieldset>
      <fieldset id="challenge-weekly" hidden>
       <legend>Wochenaufgabe</legend>
       <label>Kategorie<select name="category"><option>Bewegung</option><option>Ernährung</option><option>Spaß &amp; Abwechslung</option></select></label>
       <label>Schwierigkeit<select name="difficulty"><option>Leicht</option><option selected>Mittel</option><option>Schwer</option></select></label>
-      <label>Punkte<input name="points" type="number" min="1" max="1000" value="25"></label>
+      <label>Punkte<input name="points" type="number" min="1" max="75" value="25"></label>
      </fieldset>
      <label class="challenge-enabled"><input name="enabled" type="checkbox" checked> Aktiv</label>
      <button class="primary" type="submit">Aufgabe speichern</button>
@@ -150,7 +190,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#muenzen">Münzkonto</a><a href="#feedback">Bugs & Ideen</a><small class="app-version">Version 0.1.3</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info">Info</a><a href="#muenzen">Münzkonto</a><a href="#feedback">Bugs & Ideen</a><small class="app-version">Version 0.1.4</small></footer>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
   <form id="auth-form">
