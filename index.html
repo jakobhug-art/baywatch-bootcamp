@@ -7,7 +7,7 @@
  <meta name="description" content="Tägliche Fitnessübungen und wöchentliche Challenges für deinen Freundeskreis.">
  <title>Baywatch Bootcamp</title>
  <link rel="stylesheet" href="./style.css">
- <script src="./app.js" defer></script>
+ <script type="module" src="./app.js"></script>
 </head>
 <body>
  <header class="top"><div class="shell top-inner">
@@ -68,10 +68,16 @@
     </div>
     <div class="wheel-copy">
      <p>Ein Dreh kann dir <strong>25 Punkte bringen</strong> oder <strong>bis zu 30 kosten</strong>. Extra-Aufgaben kannst du bis Mitternacht abhaken. Die Extrarunde gibt dir 5 Punkte und kann einen zweiten Dreh freischalten.</p>
+     <p class="wheel-jackpot"><span class="coin-icon" aria-hidden="true"></span> Goldfeld: 15 Münzen · 1 % Chance</p>
      <p id="wheel-lock">Schließe zuerst dein Workout ab.</p>
      <div id="wheel-result" role="status" hidden></div>
      <button class="primary" type="button" id="wheel-action">Rad drehen</button>
     </div>
+   </div>
+   <div class="panel scratch-area" id="scratch-area" hidden>
+    <h2>Rubbellose</h2>
+    <p>Rubbel die drei Felder mit Finger oder Maus frei. Drei gleiche Zahlen gewinnen den angezeigten Münzbetrag.</p>
+    <div class="scratch-list" id="scratch-list"></div>
    </div>
   </section>
   <section id="woche" class="section">
@@ -101,7 +107,7 @@
   </div>
   <section id="muenzen" class="section">
    <div class="section-heading"><h2>Münzkonto</h2><span class="pill" id="coin-balance" hidden></span></div>
-   <p class="sub">Beim Glücksrad kannst du 1–3 Münzen oder einen Gutschein für einen freien Tag gewinnen.</p>
+   <p class="sub">Am Glücksrad gibt es ein Goldfeld für 15 Münzen, Rubbellose und einen Gutschein für einen freien Tag.</p>
    <button class="outline" type="button" id="coin-login">Anmelden</button>
    <div id="coin-area" class="lower" hidden>
     <div class="panel">
@@ -152,7 +158,8 @@
    </details>
    <details class="panel info-card">
     <summary>Glücksrad und freie Tage</summary>
-    <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Bei jedem Dreh hast du zusätzlich eine Chance von eins zu drei auf 1–3 Münzen.</p>
+    <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Das kleine Goldfeld bringt mit 1 % Chance direkt 15 Münzen.</p>
+    <p>Jeder Dreh gibt dir ein Rubbellos. Drei gleiche Zahlen gewinnen. Die Chancen pro Los sind 50 % für eine Niete, 24 % für 1 Münze, 15 % für 2 Münzen, 10 % für 3 Münzen und 1 % für 15 Münzen. Offene Lose bleiben bis zum Aufdecken verfügbar.</p>
     <p>Rad-Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung gleichst du 30 Minuspunkte mit 30 zusätzlichen Liegestützen aus.</p>
     <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel.</p>
    </details>
@@ -271,7 +278,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.29</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.30</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>

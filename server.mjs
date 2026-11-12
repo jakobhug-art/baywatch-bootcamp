@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomInt, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { daily, schedule, exercisePoints, monthTarget, monthBonus, wheel } from './deck.mjs';
+import { daily, schedule, exercisePoints, monthTarget, monthBonus } from './deck.mjs';
+import { drawScratchValues, drawWheelSlot, wheel } from './supabase/functions/_shared/wheel.mjs';
 import { setupCoins } from './coins.mjs';
 import { setupChallenges } from './challenges.mjs';
 import { setupRankings, seasonStart } from './rankings.mjs';
@@ -48,6 +49,12 @@ if(!db.prepare('PRAGMA table_info(wheel_spins)').all().some(column=>column.name=
  `);
 }
 const wheelResults=db.prepare('SELECT turn,slot,title,description,initial,reward,completed,bonus FROM wheel_spins WHERE user_id=? AND day=? ORDER BY turn');
+db.exec(`CREATE TABLE IF NOT EXISTS scratch_tickets(
+ user_id INTEGER NOT NULL, day TEXT NOT NULL, turn INTEGER NOT NULL, symbols TEXT NOT NULL, claimed_on TEXT,
+ PRIMARY KEY(user_id,day,turn), FOREIGN KEY(user_id,day,turn) REFERENCES wheel_spins(user_id,day,turn) ON DELETE CASCADE
+)`);
+const availableTickets=db.prepare(`SELECT day,turn,symbols,claimed_on FROM scratch_tickets
+ WHERE user_id=? AND (day=? OR claimed_on IS NULL OR claimed_on=?) ORDER BY day DESC,turn DESC`);
 const challenges=setupChallenges(db,fail);
 const coins=setupCoins(db,fail);
 const rankings=setupRankings(db,{legacyCount:daily.length,monthTarget,monthBonus,rewardsStart:seasonStart(schedule().day)});
@@ -78,7 +85,7 @@ if(process.argv[2]==='--grant-admin'){
 const hash = value => createHash('sha256').update(value).digest('hex');
 const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']],
  ['/media-admin.mjs',['media-admin.mjs','text/javascript']],['/season-media.mjs',['season-media.mjs','text/javascript']],
- ['/voice-media.mjs',['voice-media.mjs','text/javascript']]]);
+ ['/voice-media.mjs',['voice-media.mjs','text/javascript']],['/scratch-ticket.mjs',['scratch-ticket.mjs','text/javascript']]]);
 const attempts = new Map();
 const resetAttempts = new Map();
 const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
@@ -262,6 +269,25 @@ createServer(async (req,res)=>{
    res.writeHead(200,{'Content-Type':recording.detail,'Cache-Control':'private, no-store'});
    return res.end(recording.audio);
   }
+  if(req.method==='POST' && path==='/api/wheel/scratch'){
+   if(!user) fail(401,'Bitte melde dich an.');
+   const input=await body(req);
+   if(typeof input?.day!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.day) || ![1,2].includes(input.turn)) fail(400,'Ungültiges Los.');
+   const prize=coins.transaction(()=>{
+    const ticket=db.prepare('SELECT symbols,claimed_on FROM scratch_tickets WHERE user_id=? AND day=? AND turn=?')
+     .get(user.id,input.day,input.turn);
+    if(!ticket) fail(404,'Rubbellos nicht gefunden.');
+    const values=JSON.parse(ticket.symbols);
+    const amount=values.every(value=>value===values[0])?values[0]:0;
+    if(!ticket.claimed_on){
+     db.prepare('UPDATE scratch_tickets SET claimed_on=? WHERE user_id=? AND day=? AND turn=?')
+      .run(deck.day,user.id,input.day,input.turn);
+     if(amount) coins.credit.run(user.id,amount,'Rubbellos',deck.day);
+    }
+    return amount;
+   });
+   return reply({prize});
+  }
   if(req.method==='POST' && ['/api/wheel/spin','/api/wheel/complete'].includes(path)){
    if(!user) fail(401,'Bitte melde dich an.');
    const input=await body(req);
@@ -271,15 +297,16 @@ createServer(async (req,res)=>{
     const spins=wheelResults.all(user.id,deck.day);
     const nextTurn=spins.length+1;
     if(input.turn!==nextTurn || nextTurn>2 || (nextTurn===2 && !spins[0].bonus)) fail(409,'Heute ist kein weiterer Dreh verfügbar.');
-    const slot=randomInt(wheel.length);
+    const slot=drawWheelSlot(randomInt);
     const card=wheel[slot];
     const bonus=Number(nextTurn===1 && card.bonus===true);
     coins.transaction(()=>{
      const result=db.prepare('INSERT OR IGNORE INTO wheel_spins(user_id,day,slot,title,description,initial,reward,turn,bonus) VALUES(?,?,?,?,?,?,?,?,?)')
       .run(user.id,deck.day,slot,card.title,card.description,card.initial,card.reward??null,nextTurn,bonus);
      if(!result.changes) fail(409,'Du hast heute bereits gedreht.');
-     const won=randomInt(3)===0?randomInt(1,4):0;
-     if(won) coins.credit.run(user.id,won,'Glücksrad',deck.day);
+     db.prepare('INSERT INTO scratch_tickets(user_id,day,turn,symbols) VALUES(?,?,?,?)')
+      .run(user.id,deck.day,nextTurn,JSON.stringify(drawScratchValues(randomInt)));
+     if(card.coins) coins.credit.run(user.id,card.coins,'Glücksrad-Jackpot',deck.day);
      if(card.rest) coins.grantRest.run(user.id);
     });
    } else {
@@ -324,7 +351,10 @@ createServer(async (req,res)=>{
    `).all(user.id,deck.month+'-%',daily.length).map(row=>row.day):[];
    const standings=user?rankings.state(deck):{};
    const spins=user?wheelResults.all(user.id,deck.day):[];
-   return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,coins:user?coins.state(user.id,deck.day,Boolean(user.admin)):null});
+   const scratchTickets=user?availableTickets.all(user.id,deck.day,deck.day).map(row=>({
+    day:row.day,turn:row.turn,values:JSON.parse(row.symbols),claimed:Boolean(row.claimed_on)
+   })):[];
+   return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,scratchTickets,coins:user?coins.state(user.id,deck.day,Boolean(user.admin)):null});
   }
   fail(404,'Seite nicht gefunden.');
  } catch(error) {

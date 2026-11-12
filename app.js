@@ -1,3 +1,5 @@
+import { createScratchTicket } from './scratch-ticket.mjs';
+
 const $ = selector => document.querySelector(selector);
 function showCoins(element,amount,suffix=''){
  const icon=document.createElement('span');
@@ -357,6 +359,42 @@ function render() {
 
 const signed = points => points>0?'+'+points:points<0?'−'+Math.abs(points):'0';
 let animateSpin=false;
+let scratchOwner;
+const scratchCards=new Map();
+
+function renderScratchTickets(){
+ const owner=state.user?.id;
+ const tickets=owner?state.scratchTickets??[]:[];
+ const list=$('#scratch-list');
+ if(scratchOwner!==owner){
+  scratchOwner=owner;
+  scratchCards.clear();
+ }
+ $('#scratch-area').hidden=!tickets.length;
+ const keys=new Set();
+ const cards=tickets.map(ticket=>{
+  const key=ticket.day+':'+ticket.turn;
+  keys.add(key);
+  if(scratchCards.get(key)?.claimed!==ticket.claimed){
+   const label=(ticket.turn===1?'Los zum ersten Dreh':'Los zum Bonusdreh')+
+    (ticket.day===state.deck.day?'':' · '+dateFormat.format(new Date(ticket.day+'T00:00:00Z')));
+   const card=createScratchTicket(ticket,label,async()=>{
+    if(state.user?.id!==owner) throw new Error('Bitte melde dich erneut an.');
+    const result=await api('wheel/scratch',{day:ticket.day,turn:ticket.turn});
+    if(state.user?.id===owner){
+     const entry=scratchCards.get(key);
+     if(entry?.card===card) entry.claimed=true;
+     if(result.prize) refresh().catch(()=>{});
+    }
+    return result;
+   });
+   scratchCards.set(key,{claimed:ticket.claimed,card});
+  }
+  return scratchCards.get(key).card;
+ });
+ for(const key of scratchCards.keys()) if(!keys.has(key)) scratchCards.delete(key);
+ if(cards.length!==list.children.length || cards.some((card,index)=>card!==list.children[index])) list.replaceChildren(...cards);
+}
 
 function renderWheel(unlocked) {
  const {spins,user}=state;
@@ -365,7 +403,8 @@ function renderWheel(unlocked) {
  const result=$('#wheel-result');
  const action=$('#wheel-action');
  disc.classList.toggle('wheel-spinning',Boolean(animateSpin && spin));
- disc.style.setProperty('--wheel-turn',spin?((animateSpin?1440:0)-spin.slot*36)+'deg':'0deg');
+ const angle=spin?.slot===10?340.38:(spin?.slot??0)*35.64;
+ disc.style.setProperty('--wheel-turn',((animateSpin?1440:0)-angle)+'deg');
  animateSpin=false;
  result.hidden=!spin;
  result.replaceChildren();
@@ -383,6 +422,7 @@ function renderWheel(unlocked) {
   description.textContent=card.description;
   const score=document.createElement('strong');
   if(card.completed) score.textContent='✓ Erledigt · '+signed(card.reward)+' P';
+  else if(card.slot===10) showCoins(score,'+15');
   else if(card.reward===null) score.textContent=card.slot===8?'Gutschein im Münzkonto':signed(card.initial)+' P'+(card.bonus?' · Bonusdreh freigeschaltet':'');
   else if(card.initial<0) score.textContent=signed(card.initial)+' P aktuell · bei Erledigung kein Abzug';
   else score.textContent=signed(card.reward)+' P bei Erledigung';
@@ -594,6 +634,7 @@ async function refresh() {
  $('#sign-in-panel').hidden=signedIn;
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
  syncPortraits();
+ renderScratchTickets();
  if(signedIn) render();
  else{
   renderCoins();

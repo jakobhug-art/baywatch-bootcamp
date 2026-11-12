@@ -131,6 +131,23 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 @keyframes wheel-spin{from{transform:rotate(0deg)}to{transform:rotate(var(--wheel-turn))}}
 .wheel-disc span{display:grid;place-items:center;width:56px;height:56px;border:3px solid #eee7fa;border-radius:50%;background:#241b32;color:var(--lime);font-size:32px}
 .wheel-copy>p{margin:0 0 12px}
+.wheel-jackpot{color:#ffe18a;font-weight:700}
+.scratch-area{margin-top:14px}
+.scratch-area>h2{font-size:22px;margin:0}
+.scratch-area>p{color:var(--muted);margin:6px 0 16px}
+.scratch-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.scratch-ticket{width:100%;max-width:480px;min-width:0;padding:14px;border:1px solid var(--line);border-radius:12px;background:#15131f}
+.scratch-ticket h3{margin:0 0 10px;font-size:15px}
+.scratch-fields{position:relative;aspect-ratio:5/1;min-height:52px;overflow:hidden;border:1px solid #8c7141;border-radius:8px}
+.scratch-values{height:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#322642;color:#ffe18a;font:700 clamp(22px,5vw,32px)/1 "Space Grotesk",system-ui}
+.scratch-values span{display:grid;place-items:center}
+.scratch-values span+span{border-left:1px solid #8c7141}
+.scratch-fields:has(canvas[hidden]) .scratch-covered{visibility:hidden}
+.scratch-fields canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;cursor:crosshair}
+.scratch-ticket button{margin-top:10px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;color:var(--text);background:transparent;font-size:13px}
+.scratch-ticket button:hover:not(:disabled){border-color:#ffe18a;color:#ffe18a}
+.scratch-status{margin:10px 0 0;color:var(--muted);overflow-wrap:anywhere}
+.scratch-won .scratch-status{color:#ffe18a;font-weight:700}
 #wheel-result{border-left:2px solid var(--lime);padding:7px 12px;margin:0 0 12px;background:#12121a90}
 #wheel-result p{margin:5px 0}
 #wheel-result strong{color:var(--lime)}
@@ -172,7 +189,7 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 .media-delete-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:800px){#gallery-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){#member-summary-content{grid-template-columns:minmax(0,1fr)}}
-.wheel-disc{background:conic-gradient(from -18deg,#d8fa76 0deg 36deg,#ff8dc9 36deg 72deg,#83e9ff 72deg 108deg,#bea8ff 108deg 144deg,#ffb183 144deg 180deg,#ffe17a 180deg 216deg,#9df5c1 216deg 252deg,#fa9ea5 252deg 288deg,#d9c3ff 288deg 324deg,#ff729d 324deg)}
+.wheel-disc{background:conic-gradient(from -17.82deg,#d8fa76 0% 9.9%,#ff8dc9 9.9% 19.8%,#83e9ff 19.8% 29.7%,#bea8ff 29.7% 39.6%,#ffb183 39.6% 49.5%,#ffe17a 49.5% 59.4%,#9df5c1 59.4% 69.3%,#fa9ea5 69.3% 79.2%,#d9c3ff 79.2% 89.1%,#ff729d 89.1% 99%,#e4a329 99% 100%)}
 .daily-extra{display:inline-block;margin-top:12px}
 #challenge-editor summary{cursor:pointer;font-weight:700}
 #challenge-form{max-width:620px}

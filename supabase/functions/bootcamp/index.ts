@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
-import { wheel } from "../_shared/wheel.mjs";
+import { drawScratchValues, drawWheelSlot, wheel } from "../_shared/wheel.mjs";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -266,9 +266,12 @@ Deno.serve(async (request) => {
       return json({ balance: result.balance, removed: result.removed, audioCleanupPending });
     }
     if (path === "/wheel/spin" && typeof input.day === "string" && [1, 2].includes(input.turn)) {
-      const slot = randomInt(wheel.length);
-      return rpc("bootcamp_spin", { p_user: data.user.id, p_day: input.day, p_turn: input.turn,
-        p_slot: slot, p_card: wheel[slot], p_coins: randomInt(3) === 0 ? randomInt(1, 4) : 0 });
+      const slot = drawWheelSlot(randomInt);
+      return rpc("bootcamp_spin_with_ticket", { p_user: data.user.id, p_day: input.day, p_turn: input.turn,
+        p_slot: slot, p_card: wheel[slot], p_values: drawScratchValues(randomInt) });
+    }
+    if (path === "/wheel/scratch" && typeof input.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.day) && [1, 2].includes(input.turn)) {
+      return rpc("bootcamp_claim_scratch", { p_user: data.user.id, p_day: input.day, p_turn: input.turn });
     }
     if (path === "/wheel/complete" && typeof input.day === "string" && [1, 2].includes(input.turn)) {
       return rpc("bootcamp_complete_spin", { p_user: data.user.id, p_day: input.day, p_turn: input.turn });
