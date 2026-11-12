@@ -176,8 +176,8 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 #challenge-form{max-width:620px}
 #challenge-form select,#challenge-form textarea{padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
 #challenge-form fieldset{display:grid;gap:10px;border:1px solid var(--line);border-radius:8px}
-#challenge-form .challenge-enabled{display:flex;align-items:center;gap:8px}
-#challenge-form .challenge-enabled input{width:auto}
+form .challenge-enabled{display:flex;align-items:center;gap:8px}
+form .challenge-enabled input{width:auto}
 .segments{flex-wrap:wrap}
 #points-reset{max-width:420px}
 .header-brand .brand-copy{display:grid;gap:4px;color:var(--text)}

@@ -113,7 +113,7 @@ function renderDaySummary(amounts){
  }
  $('#workout-base').textContent=earnedBase+' / '+availableBase+' P';
  $('#workout-bonus').textContent=earnedBonus+' / '+availableBonus+' P';
- $('#workout-photo-bonus').textContent=state.workoutFinished?signed(photoBonus)+' P':'+10 P mit Foto';
+ $('#workout-photo-bonus').textContent=state.workoutFinished?signed(photoBonus)+' P':'+10 P mit Foto · −20 P ohne Foto';
  $('#workout-penalty').textContent=signed(-10*(deck.daily.length-reached))+' P';
  $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size);
 }
@@ -304,10 +304,10 @@ function render() {
    <dl class="daily-rates">
     <div><dt>Grundpunkte</dt><dd id="workout-base"></dd></div>
     <div><dt>Bonuspunkte</dt><dd id="workout-bonus"></dd></div>
-    <div><dt>Foto-Bonus</dt><dd id="workout-photo-bonus"></dd></div>
+    <div><dt>Foto-Wertung</dt><dd id="workout-photo-bonus"></dd></div>
     <div><dt>Abzug für offene Ziele</dt><dd id="workout-penalty"></dd></div>
    </dl>
-   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Mit deinem Foto schließt du das Workout ab und schaltest das Glücksrad frei.'}</p>
+   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
   </article>`:'');
  renderDaySummary(amounts);
@@ -1365,31 +1365,47 @@ memberAdminForm.addEventListener('submit',async event=>{
 
 const photoDialog=$('#workout-photo');
 const photoForm=$('#workout-photo-form');
+const noPhoto=photoForm.elements.confirmNoPhoto;
+const photoSubmit=$('#workout-photo-submit');
+function syncPhotoChoice(){
+ photoForm.elements.photo.disabled=noPhoto.checked;
+ photoSubmit.textContent=noPhoto.checked?'Ohne Foto abschließen':'Foto hochladen und abschließen';
+}
+noPhoto.addEventListener('change',syncPhotoChoice);
+photoDialog.addEventListener('close',()=>{
+ photoForm.reset();
+ syncPhotoChoice();
+});
 $('#close-workout-photo').addEventListener('click',()=>{if(!busy) photoDialog.close();});
 photoDialog.addEventListener('cancel',event=>{if(busy) event.preventDefault();});
 photoForm.addEventListener('submit',async event=>{
  event.preventDefault();
  if(busy || !state?.user || state.workoutFinished || quantityQueue.size) return;
+ const confirmNoPhoto=noPhoto.checked;
  const file=photoForm.elements.photo.files[0];
- if(!file) return;
+ if(!confirmNoPhoto && !file) return;
  busy=true;
- const submit=photoForm.querySelector('button');
- submit.disabled=true;
- setError('#workout-photo-status','Foto wird vorbereitet …');
+ photoSubmit.disabled=true;
+ noPhoto.disabled=true;
+ setError('#workout-photo-status',confirmNoPhoto?'Workout wird abgeschlossen …':'Foto wird vorbereitet …');
  try{
   const day=state.deck.day;
-  const {makeWorkoutPhoto}=await import('./season-media.mjs');
-  const photo=await makeWorkoutPhoto(file);
-  setError('#workout-photo-status','Foto wird hochgeladen …');
-  await api('workout/finish',{day,photo});
+  if(confirmNoPhoto){
+   await api('workout/finish',{day,confirmNoPhoto:true});
+  }else{
+   const {makeWorkoutPhoto}=await import('./season-media.mjs');
+   const photo=await makeWorkoutPhoto(file);
+   setError('#workout-photo-status','Foto wird hochgeladen …');
+   await api('workout/finish',{day,photo});
+  }
   await refresh();
   photoDialog.close();
-  photoForm.reset();
-  if(galleryVisible) loadGallery();
+  if(!confirmNoPhoto && galleryVisible) loadGallery();
  }catch(error){
   setError('#workout-photo-status',error.message);
  }finally{
-  submit.disabled=false;
+  photoSubmit.disabled=false;
+  noPhoto.disabled=false;
   busy=false;
  }
 });

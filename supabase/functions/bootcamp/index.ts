@@ -220,9 +220,13 @@ Deno.serve(async (request) => {
       return json({ more: files.length > 60 });
     }
     if (path === "/workout/finish" && typeof input.day === "string") {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day) || typeof input.photo !== "string"
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day)) return json({ error: "Ungültiges Workout-Datum." }, 400);
+      if (input.confirmNoPhoto === true && input.photo === undefined) {
+        return rpc("bootcamp_finish_without_photo", { p_user: data.user.id, p_day: input.day });
+      }
+      if (typeof input.photo !== "string"
         || input.photo.length > 213336 || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.photo)) {
-        return json({ error: "Wähle ein Foto für deinen Workout-Abschluss." }, 400);
+        return json({ error: "Wähle ein Foto oder bestätige den Abschluss ohne Foto." }, 400);
       }
       let photo: Uint8Array;
       try { photo = Uint8Array.from(atob(input.photo), byte => byte.charCodeAt(0)); }

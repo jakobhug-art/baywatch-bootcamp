@@ -138,7 +138,7 @@
     <summary>Training, Punkte und Workout-Abschluss</summary>
     <p>Trag bei jeder Tagesübung Wiederholungen oder Sekunden ein. Du kannst die Plus- und Minus-Tasten nutzen oder die Zahl direkt eingeben und speichern.</p>
     <p>Bis zum Soll sammelst du Grundpunkte. Alles darüber zählt mit einem Viertel des normalen Satzes. Der Bonus endet beim doppelten Soll oder bei 75 Punkten pro Übung. Grund- und Bonuspunkte werden getrennt auf ganze Punkte abgerundet.</p>
-    <p>Unter „Workout abschließen“ siehst du deine Punkte und Abzüge. Je fehlendem Ziel gehen 10 Punkte ab, entweder beim Abschluss oder um Mitternacht. Mit einem Foto schließt du den Tag ab, bekommst einmalig 10 Punkte extra und schaltest das Glücksrad frei.</p>
+    <p>Unter „Workout abschließen“ siehst du deine Punkte und Abzüge. Je fehlendem Ziel gehen 10 Punkte ab, entweder beim Abschluss oder um Mitternacht. Ein Foto bringt beim Abschluss 10 Punkte extra. Wenn du den Abschluss ohne Foto per Haken bestätigst, werden 20 Punkte abgezogen. In beiden Fällen wird das Glücksrad freigeschaltet.</p>
    </details>
    <details class="panel info-card">
     <summary>Wochen-Challenges und Monatsziel</summary>
@@ -150,9 +150,9 @@
    </details>
    <details class="panel info-card">
     <summary>Glücksrad und freie Tage</summary>
-    <p>Nach dem Foto-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Bei jedem Dreh hast du zusätzlich eine Chance von eins zu drei auf 1–3 Münzen.</p>
+    <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Bei jedem Dreh hast du zusätzlich eine Chance von eins zu drei auf 1–3 Münzen.</p>
     <p>Rad-Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung gleichst du 30 Minuspunkte mit 30 zusätzlichen Liegestützen aus.</p>
-    <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel. Das Rad öffnet sich nach dem Foto-Abschluss.</p>
+    <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel.</p>
    </details>
    <details class="panel info-card">
     <summary>Münzen und Pranks</summary>
@@ -269,7 +269,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.24</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.25</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>
@@ -278,7 +278,8 @@
   <p>Für den Abschluss mit Foto bekommst du 10 Punkte extra. Alle angemeldeten Mitglieder können das Foto in der Galerie der laufenden Season sehen.</p>
   <form id="workout-photo-form">
    <label>Foto auswählen<input name="photo" type="file" accept="image/*" required></label>
-   <button class="primary" type="submit">Foto hochladen und abschließen</button>
+   <label class="challenge-enabled"><input name="confirmNoPhoto" type="checkbox"> Ohne Foto abschließen und 20 Punkte Abzug bestätigen</label>
+   <button class="primary" id="workout-photo-submit" type="submit">Foto hochladen und abschließen</button>
    <p id="workout-photo-status" role="status" hidden></p>
   </form>
  </dialog>
