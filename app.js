@@ -987,6 +987,8 @@ function coinControls(){
 function renderCoins(){
  const wallet=state.coins;
  const owner=state.user?.id;
+ const inbox=$('#coin-inbox');
+ const inboxScroll=coinOwner===owner?inbox.scrollTop:0;
  if(coinOwner!==owner){
   coinOwner=owner;
   if(recorder?.state==='recording') recorder.stop();
@@ -998,7 +1000,7 @@ function renderCoins(){
  $('#coin-login').hidden=Boolean(wallet);
  $('#coin-balance').hidden=!wallet;
  $('#coin-history').replaceChildren();
- clearVoiceList($('#coin-inbox'));
+ clearVoiceList(inbox);
  clearVoiceList($('#coin-personal-list'));
  $('#coin-personal').hidden=true;
  if(!wallet) return;
@@ -1010,7 +1012,6 @@ function renderCoins(){
   showCoins(row,signed(entry.amount),' · '+entry.label+' · '+entry.day);
   $('#coin-history').append(row);
  }
- const inbox=$('#coin-inbox');
  const group=wallet.groupPranks??wallet.items;
  const groupIds=new Set(group.map(item=>item.id));
  const personal=wallet.items.filter(item=>!groupIds.has(item.id));
@@ -1020,6 +1021,7 @@ function renderCoins(){
   inbox.append(empty);
  }
  for(const item of group) inbox.append(prankCard(item,wallet,owner));
+ inbox.scrollTop=inboxScroll;
  if(personal.length){
   $('#coin-personal').hidden=false;
   $('#coin-personal-list').append(...personal.map(item=>prankCard(item,wallet,owner)));

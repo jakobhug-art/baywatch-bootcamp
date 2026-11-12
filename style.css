@@ -146,6 +146,7 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 #coin-area details{margin-top:14px}
 .coin-inbox-action{margin:5px 5px 0 0}
 .prank-feed-intro{margin:8px 0}
+#coin-inbox{max-height:min(24rem,55vh);overflow-y:auto;overflow-wrap:anywhere}
 #coin-personal{margin-top:14px}
 #coin-inbox audio,#coin-personal-list audio{display:block;max-width:100%;margin-top:8px}
 .coin-icon{display:inline-grid;place-items:center;vertical-align:-.13em;width:1em;height:1em;border:1px solid #ffe18a;border-radius:50%;background:linear-gradient(145deg,#ffe694,#d98e27);color:#65400d;box-shadow:0 1px 0 #855219}
