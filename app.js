@@ -113,7 +113,7 @@ function renderDaySummary(amounts){
  }
  $('#workout-base').textContent=earnedBase+' / '+availableBase+' P';
  $('#workout-bonus').textContent=earnedBonus+' / '+availableBonus+' P';
- $('#workout-photo-bonus').textContent=state.workoutFinished?signed(photoBonus)+' P':'+10 P mit Foto · −20 P ohne Foto';
+ $('#workout-photo-bonus').textContent=signed(photoBonus)+' P';
  $('#workout-penalty').textContent=signed(-10*(deck.daily.length-reached))+' P';
  $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size);
 }
@@ -289,7 +289,7 @@ function render() {
   const {amount=0,points=0} = amounts.get(item.id)||{};
   const unit=dailyTerms[item.id]||(item.unit==='Sek.'?'Sekunde':'Wiederholung');
   const [normal,bonus]=rates(item);
-  return `<article class="card ${item.color}">
+  return `<article class="card exercise-card ${item.color}">
    ${symbols}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
    <h3>${item.name}</h3>
@@ -311,7 +311,14 @@ function render() {
    <dl class="daily-rates">
     <div><dt>Grundpunkte</dt><dd id="workout-base"></dd></div>
     <div><dt>Bonuspunkte</dt><dd id="workout-bonus"></dd></div>
-    <div><dt>Foto-Wertung</dt><dd id="workout-photo-bonus"></dd></div>
+    <div>
+     <dt>Foto-Wertung</dt>
+     <dd class="workout-photo-options" ${state.workoutFinished?'hidden':''}>
+      <span>Mit Foto <strong>+10 P</strong></span>
+      <span>Ohne Foto <strong>−20 P</strong></span>
+     </dd>
+     <dd id="workout-photo-bonus" ${state.workoutFinished?'':'hidden'}></dd>
+    </div>
     <div><dt>Abzug für offene Ziele</dt><dd id="workout-penalty"></dd></div>
    </dl>
    <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>

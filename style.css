@@ -233,8 +233,15 @@ form .challenge-enabled input{width:auto}
 .workout-card{--tone:#8dafff}
 .workout-card .primary{margin-top:auto;background:var(--tone)}
 .workout-card .primary:hover{background:color-mix(in srgb,var(--tone) 75%,white)}
+.workout-photo-options{text-align:right}
+.workout-photo-options span{display:block;white-space:nowrap}
 .daily:has(.workout-card){grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:650px){.daily:has(.workout-card){grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){
+ .daily:has(.workout-card){grid-template-columns:repeat(2,minmax(0,1fr))}
+ .exercise-card progress{margin-top:auto}
+ .exercise-card .counter{margin-top:0}
+ .daily .workout-card{grid-column:1/-1}
+}
 #member-admin summary{cursor:pointer;font-weight:700}
 #member-admin-form{max-width:420px}
 #member-admin-form select{padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
