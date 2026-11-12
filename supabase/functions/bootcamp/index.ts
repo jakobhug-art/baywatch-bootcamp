@@ -184,7 +184,7 @@ Deno.serve(async (request) => {
       return json({ error: "Der Kauf konnte nicht bestätigt werden." }, 500);
     }
     if (path === "/quantity" && typeof input.day === "string" && typeof input.id === "string" && Number.isInteger(input.amount) && input.amount >= 0 && input.amount <= 10000) {
-      return rpc("bootcamp_save_quantity", { p_user: data.user.id, p_day: input.day, p_exercise: input.id, p_amount: input.amount });
+      return rpc("bootcamp_save_quantity_with_voice", { p_user: data.user.id, p_day: input.day, p_exercise: input.id, p_amount: input.amount });
     }
     if (path === "/mark" && typeof input.period === "string" && typeof input.id === "string" && typeof input.done === "boolean") {
       return rpc("bootcamp_save_mark", { p_user: data.user.id, p_week: input.period, p_exercise: input.id, p_done: input.done });

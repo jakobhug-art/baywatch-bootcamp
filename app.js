@@ -12,6 +12,42 @@ let register = false;
 let busy = false;
 const quantityQueue = new Map();
 let quantityRefresh;
+let trainingAudio;
+let trainingAudioQueue=Promise.resolve();
+
+function prepareTrainingAudio(){
+ const AudioContext=window.AudioContext||window.webkitAudioContext;
+ if(!AudioContext) return;
+ try{
+  trainingAudio??=new AudioContext();
+  if(trainingAudio.state==='suspended') trainingAudio.resume().catch(()=>{});
+ } catch {}
+}
+
+function playTrainingVoices(ids,owner){
+ if(!ids?.length) return;
+ const context=trainingAudio;
+ trainingAudioQueue=trainingAudioQueue.then(async ()=>{
+  for(const id of ids){
+   if(state?.user?.id!==owner || trainingAudio!==context) return;
+   if(!context || context.state!=='running') throw new Error('Audio gesperrt');
+   const {url}=await api('voice/'+id);
+   const response=await fetch(url);
+   if(!response.ok) throw new Error('Aufnahme nicht verfügbar');
+   const buffer=await context.decodeAudioData(await response.arrayBuffer());
+   if(state?.user?.id!==owner || trainingAudio!==context) return;
+   await new Promise(resolve=>{
+    const source=context.createBufferSource();
+    source.buffer=buffer;
+    source.connect(context.destination);
+    source.onended=resolve;
+    source.start();
+   });
+  }
+ }).catch(()=>{
+  if(state?.user?.id===owner) setError('#notice','Die Sprachnachricht konnte nicht automatisch abgespielt werden. Du findest sie im Münzkonto.');
+ });
+}
 const rateFormat = new Intl.NumberFormat('de-DE',{maximumFractionDigits:6});
 const dailyTerms = {
  push:'Liegestütz',
@@ -133,6 +169,9 @@ async function api(path, payload) {
   if(path==='logout'){
    await cloudRequest(path,payload,cloudSession?.access_token);
    saveCloudSession(null);
+   trainingAudio?.close().catch(()=>{});
+   trainingAudio=undefined;
+   trainingAudioQueue=Promise.resolve();
    return {ok:true};
   }
   if(path==='coins/buy') payload={...payload,requestId:crypto.randomUUID()};
@@ -403,7 +442,8 @@ async function flushQuantity(key,entry){
   do {
    if(state?.user?.id!==entry.owner) return;
    amount=entry.amount;
-   await api('quantity',{id:entry.id,day:entry.day,amount});
+   const result=await api('quantity',{id:entry.id,day:entry.day,amount});
+   playTrainingVoices(result.voiceIds,entry.owner);
    if(state.deck.day===entry.day && state.user?.id===entry.owner){
     const card=state.deck.daily.find(item=>item.id===entry.id);
     if(card) state.quantities=[...state.quantities.filter(item=>item.exercise!==entry.id),{exercise:entry.id,amount,points:estimatedPoints(card,amount)}];
@@ -426,6 +466,7 @@ function saveAmount(form, delta) {
  const amount=Math.min(10000,Math.max(0,Number(field.value)+delta));
  const id=form.dataset.id;
  const card=state.deck.daily.find(item=>item.id===id);
+ if(cloudUrl && amount>=card.target) prepareTrainingAudio();
  const key=state.user.id+':'+state.deck.day+':'+id;
  const entry=quantityQueue.get(key)||{id,day:state.deck.day,owner:state.user.id,saving:false};
  entry.amount=amount;
