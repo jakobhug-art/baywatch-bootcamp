@@ -53,6 +53,24 @@ function renderDaySummary(amounts){
  const points=deck.daily.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?estimatedPoints(item,item.target):0),wheelPoints);
  const reached=rest?deck.daily.length:deck.daily.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
  $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+deck.daily.length+' Ziele')+' · '+points+' P';
+ const workout=$('#workout-summary');
+ if(!workout) return;
+ let earnedBase=0;
+ let availableBase=0;
+ let earnedBonus=0;
+ let availableBonus=0;
+ for(const card of deck.daily){
+  const base=estimatedPoints(card,card.target);
+  const earned=Math.max(amounts.get(card.id)?.points||0,rest?base:0);
+  earnedBase+=Math.min(earned,base);
+  availableBase+=base;
+  earnedBonus+=Math.max(0,earned-base);
+  availableBonus+=estimatedPoints(card,card.target*2)-base;
+ }
+ $('#workout-base').textContent=earnedBase+' / '+availableBase+' P';
+ $('#workout-bonus').textContent=earnedBonus+' / '+availableBonus+' P';
+ $('#workout-penalty').textContent=signed(-10*(deck.daily.length-reached))+' P';
+ $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size);
 }
 
 const cloudUrl = document.querySelector('meta[name="bootcamp-api"]')?.content;
@@ -60,16 +78,18 @@ const cloudKey = document.querySelector('meta[name="bootcamp-key"]')?.content;
 const sessionKey = 'baywatch-bootcamp-session';
 let cloudSession = cloudUrl ? readCloudSession() : null;
 let sessionRefresh;
+if(cloudSession) saveCloudSession(cloudSession);
 
 function readCloudSession(){
- try{return JSON.parse(sessionStorage.getItem(sessionKey));}
+ try{return JSON.parse(localStorage.getItem(sessionKey)||sessionStorage.getItem(sessionKey));}
  catch{return null;}
 }
 
 function saveCloudSession(session){
  cloudSession=session;
- if(session) sessionStorage.setItem(sessionKey,JSON.stringify(session));
- else sessionStorage.removeItem(sessionKey);
+ if(session) localStorage.setItem(sessionKey,JSON.stringify(session));
+ else localStorage.removeItem(sessionKey);
+ sessionStorage.removeItem(sessionKey);
 }
 
 async function cloudRequest(path,payload,token){
@@ -85,14 +105,19 @@ async function cloudRequest(path,payload,token){
 }
 
 async function refreshCloudSession(){
+ cloudSession=readCloudSession();
  if(!cloudSession || cloudSession.expires_at>Date.now()/1000+60) return;
  if(!sessionRefresh){
-  sessionRefresh=cloudRequest('refresh',{refresh_token:cloudSession.refresh_token})
-   .then(saveCloudSession)
-   .catch(error=>{
+  const renew=async ()=>{
+   const latest=readCloudSession();
+   if(!latest || latest.expires_at>Date.now()/1000+60){cloudSession=latest;return;}
+   try{saveCloudSession(await cloudRequest('refresh',{refresh_token:latest.refresh_token}));}
+   catch(error){
     if(error.status!==401) throw error;
     saveCloudSession(null);
-   })
+   }
+  };
+  sessionRefresh=(navigator.locks?navigator.locks.request(sessionKey,renew):renew())
    .finally(()=>{sessionRefresh=undefined;});
  }
  await sessionRefresh;
@@ -128,7 +153,7 @@ function render() {
  const rest=Boolean(coins?.rest);
  const symbol=coins?.items.find(item=>item.kind==='symbol'&&item.recipient===user.id)?.detail;
  const savedAmounts=new Map(quantities.map(item=>[item.exercise,item.amount]));
- const unlocked=rest||deck.daily.every(item=>(savedAmounts.get(item.id)||0)>=item.target);
+ const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:rest||deck.daily.every(item=>(savedAmounts.get(item.id)||0)>=item.target);
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
  renderDaySummary(amounts);
@@ -151,14 +176,24 @@ function render() {
    </dl>
    <progress max="${item.target}" value="${Math.min(amount,item.target)}" aria-label="Tagesziel ${item.name}"></progress>
    <p class="progress-label">${amount} / ${item.target} ${item.unit}${amount>=item.target?' · ✓':''}</p>
-   <form class="counter" data-id="${item.id}">
+   <form class="counter" data-id="${item.id}"><fieldset class="counter-fields" ${state.workoutFinished?'disabled':''}>
     <button type="button" data-delta="-${item.step}" aria-label="${item.name}: ${item.step} ${item.unit} abziehen">−</button>
     <input type="number" name="amount" value="${amount}" min="0" max="10000" step="1" inputmode="numeric" required aria-label="${item.name}: Tagesmenge in ${item.unit}" title="Tagesmenge eingeben und mit Enter speichern">
     <button type="button" data-delta="+${item.step}" aria-label="${item.name}: ${item.step} ${item.unit} hinzufügen">+${item.step}</button>
     <button type="submit" class="save-amount" aria-label="${item.name}: Tagesmenge speichern">Speichern</button>
-   </form>
+   </fieldset></form>
   </article>`;
- }).join('');
+ }).join('')+(cloudUrl?`<article class="card workout-card" id="workout-summary">
+   <h3>Workout abschließen</h3>
+   <dl class="daily-rates">
+    <div><dt>Grundpunkte</dt><dd id="workout-base"></dd></div>
+    <div><dt>Bonuspunkte</dt><dd id="workout-bonus"></dd></div>
+    <div><dt>Abzug für offene Ziele</dt><dd id="workout-penalty"></dd></div>
+   </dl>
+   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Der Abschluss speichert deine Tageswertung endgültig und schaltet das Glücksrad frei.'}</p>
+   <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
+  </article>`:'');
+ renderDaySummary(amounts);
  $('#weekly').innerHTML = deck.weekly.map(([id,icon,name,description,points,color,category,difficulty],index)=>{
   const done=marks.some(mark=>mark.exercise===id);
   return `<article class="card ${color}"><div class="card-head"><span class="tile-icon" aria-hidden="true">${icon}</span><span class="points">+${points} P</span></div>
@@ -385,7 +420,7 @@ async function flushQuantity(key,entry){
 
 function saveAmount(form, delta) {
  if(!state?.user){showAuth();return;}
- if(busy) return;
+ if(busy || state.workoutFinished) return;
  const field=form.elements.amount;
  if(!form.reportValidity()) return;
  const amount=Math.min(10000,Math.max(0,Number(field.value)+delta));
@@ -404,6 +439,10 @@ function saveAmount(form, delta) {
 }
 
 $('#daily').addEventListener('click',event=>{
+ if(event.target.closest('#workout-finish')){
+  if(!quantityQueue.size && !state.workoutFinished) change('workout/finish',{day:state.deck.day},'#wheel-action');
+  return;
+ }
  const button=event.target.closest('[data-delta]');
  if(button) saveAmount(button.form,Number(button.dataset.delta));
 });
@@ -445,7 +484,8 @@ $('#wheel-action').addEventListener('click',async event=>{
  } finally {
   const pending=state.spins.some(card=>card.reward!==null && !card.completed);
   button.removeAttribute('aria-busy');
-  button.disabled=!pending && state.activeDays.includes(state.deck.day)===false;
+  const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:state.activeDays.includes(state.deck.day);
+  button.disabled=!pending && !unlocked;
   busy=false;
  }
 });
@@ -617,10 +657,10 @@ function coinControls(){
  $('#coin-detail').hidden=!['symbol','exercise'].includes(kind);
  $('#coin-recording').hidden=kind!=='voice';
  $('#rest-info').hidden=!rest;
- $('#rest-info').textContent=wallet.rest?'Heute ist bereits ein freier Tag.':wallet.vouchers?wallet.vouchers+' Gutschein(e) verfügbar. Beim Einlösen wird ein Gutschein genutzt.':'Du bekommst die regulären Zielpunkte. Der Tag zählt zum Monatsziel.';
+ $('#rest-info').textContent=state.workoutFinished?'Dein Workout ist für heute abgeschlossen.':wallet.rest?'Heute ist bereits ein freier Tag.':wallet.vouchers?wallet.vouchers+' Gutschein(e) verfügbar. Beim Einlösen wird ein Gutschein genutzt.':'Du bekommst die regulären Zielpunkte. Der Tag zählt zum Monatsziel.';
  $('#coin-submit').textContent=rest?(wallet.vouchers?'Gutschein für heute einlösen':'Heute freikaufen'):'Senden';
  setOptions(coinForm.elements.detail,kind==='symbol'?wallet.symbols.map((symbol,index)=>[symbol,symbol+' '+symbolNames[index]]):wallet.exercises.map(exercise=>[exercise,exercise]));
- $('#coin-submit').disabled=rest?wallet.rest||(!wallet.vouchers&&wallet.balance<wallet.prices.rest):!wallet.friends.length||wallet.balance<wallet.prices[kind]||(kind==='voice'&&!recording);
+ $('#coin-submit').disabled=rest?state.workoutFinished||wallet.rest||(!wallet.vouchers&&wallet.balance<wallet.prices.rest):!wallet.friends.length||wallet.balance<wallet.prices[kind]||(kind==='voice'&&!recording);
 }
 function renderCoins(){
  const wallet=state.coins;

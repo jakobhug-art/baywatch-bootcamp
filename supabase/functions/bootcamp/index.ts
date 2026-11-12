@@ -134,11 +134,14 @@ Deno.serve(async (request) => {
       return sessionResponse(data.session);
     }
 
-    if (!["/quantity", "/mark", "/reports", "/reports/status", "/admin/reset-points",
+    if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
       "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/admin/challenges"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+    if (path === "/workout/finish" && typeof input.day === "string") {
+      return rpc("bootcamp_finish_workout", { p_user: data.user.id, p_day: input.day });
+    }
     if (path === "/admin/challenges") return rpc("bootcamp_save_challenge", { p_user: data.user.id, p_input: input });
     if (path === "/wheel/spin" && typeof input.day === "string" && [1, 2].includes(input.turn)) {
       const slot = randomInt(wheel.length);

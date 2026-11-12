@@ -40,7 +40,7 @@
   </section>
   <section id="heute" class="section">
    <div class="section-heading"><div><p class="eyebrow accent">TÄGLICHES TRAINING</p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
-   <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Am Tagesende werden je fehlendem Ziel 10 Punkte abgezogen.</p>
+   <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Je fehlendem Ziel werden beim Abschluss oder am Tagesende 10 Punkte abgezogen.</p>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
   </section>
@@ -53,7 +53,7 @@
     </div>
     <div class="wheel-copy">
      <p>Ein Dreh kann dir <strong>25 Punkte bringen</strong> oder <strong>bis zu 30 kosten</strong>. Extra-Aufgaben kannst du bis Mitternacht abhaken. Die Extrarunde gibt dir 5 Punkte und kann einen zweiten Dreh freischalten.</p>
-     <p id="wheel-lock">Erreiche zuerst alle Ziele der Tageschallenge.</p>
+     <p id="wheel-lock">Schließe zuerst dein Workout ab.</p>
      <div id="wheel-result" role="status" hidden></div>
      <button class="primary" type="button" id="wheel-action">Rad drehen</button>
     </div>
@@ -106,7 +106,7 @@
     <summary>Tageschallenge und Punkte</summary>
     <p>Trag deine Wiederholungen oder Sekunden mit Plus und Minus ein. Du kannst die Menge auch direkt eintippen und speichern. Auf jeder Karte stehen das Soll und die beiden Punktesätze.</p>
     <p>Bis zum Soll zählen deine Punkte anteilig. Oberhalb des Solls zählt jede zusätzliche Wiederholung oder Sekunde ein Viertel so viel. Der Bonus endet beim doppelten Soll oder sobald die Übung 75 Punkte erreicht. Es zählen ganze Punkte, jeweils abgerundet für Grundwertung und Bonus.</p>
-    <p>Um Mitternacht beginnt der neue Trainingstag. Je fehlendem Ziel gehen 10 Punkte von deiner Wertung ab. Ein freier Tag ergänzt fehlende Zielpunkte und zählt als vollständig erfüllt.</p>
+    <p>Unter „Workout abschließen“ siehst du Grundpunkte, Bonuspunkte und Abzüge. Der Abschluss speichert deine Tageswertung und schaltet das Glücksrad frei. Je fehlendem Ziel gehen dann 10 Punkte ab. Ohne manuellen Abschluss wird der Abzug um Mitternacht gebucht. Einen freien Tag kannst du vor dem Abschluss einsetzen.</p>
    </details>
    <details class="panel info-card">
     <summary>Wochen-Challenges und Monatsziel</summary>
@@ -115,7 +115,7 @@
    </details>
    <details class="panel info-card">
     <summary>Glücksrad</summary>
-    <p>Nach allen Tageszielen kannst du freiwillig drehen. Das Rad vergibt Plus- oder Minuspunkte, Zusatzaufgaben, eine Extrarunde oder einen Gutschein für einen freien Tag. Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung holst du dir die 30 Minuspunkte zurück, indem du 30 zusätzliche Liegestütze machst.</p>
+    <p>Nach dem Workout-Abschluss kannst du freiwillig drehen. Das Rad vergibt Plus- oder Minuspunkte, Zusatzaufgaben, eine Extrarunde oder einen Gutschein für einen freien Tag. Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung holst du dir die 30 Minuspunkte zurück, indem du 30 zusätzliche Liegestütze machst.</p>
     <p>Pro Tag sind bis zu zwei Drehs möglich. Jeder Dreh hat zusätzlich eine Chance von eins zu drei auf 1–3 Münzen.</p>
    </details>
    <details class="panel info-card">
@@ -201,7 +201,7 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.9</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.10</small></footer>
  <dialog id="auth">
   <div class="dialog-heading"><h2 id="auth-title">Anmelden</h2><button class="outline" id="close-auth" type="button" aria-label="Dialog schließen">✕</button></div>
   <form id="auth-form">
