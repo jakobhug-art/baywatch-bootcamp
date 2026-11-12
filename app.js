@@ -117,46 +117,76 @@ function renderDaySummary(amounts){
 const cloudUrl = document.querySelector('meta[name="bootcamp-api"]')?.content;
 const cloudKey = document.querySelector('meta[name="bootcamp-key"]')?.content;
 const sessionKey = 'baywatch-bootcamp-session';
-let cloudSession = cloudUrl ? readCloudSession() : null;
+let cloudSession = null;
+let sessionStorageSource;
 let sessionRefresh;
-if(cloudSession) saveCloudSession(cloudSession);
+if(cloudUrl){
+ cloudSession=readCloudSession();
+ if(cloudSession) saveCloudSession(cloudSession);
+}
 
 function readCloudSession(){
- try{return JSON.parse(localStorage.getItem(sessionKey)||sessionStorage.getItem(sessionKey));}
- catch{return null;}
+ if(sessionStorageSource==='memory') return cloudSession;
+ for(const kind of sessionStorageSource?[sessionStorageSource]:['localStorage','sessionStorage']){
+  try{
+   const session=JSON.parse(window[kind].getItem(sessionKey));
+   if(session?.access_token && session?.refresh_token) return session;
+  } catch {}
+ }
+ return null;
 }
 
 function saveCloudSession(session){
  cloudSession=session;
- if(session) localStorage.setItem(sessionKey,JSON.stringify(session));
- else localStorage.removeItem(sessionKey);
- sessionStorage.removeItem(sessionKey);
+ sessionStorageSource='memory';
+ for(const kind of ['localStorage','sessionStorage']){
+  try{
+   if(session && sessionStorageSource==='memory'){
+    window[kind].setItem(sessionKey,JSON.stringify(session));
+    sessionStorageSource=kind;
+   } else window[kind].removeItem(sessionKey);
+  } catch {}
+ }
+ if(!session) sessionStorageSource=undefined;
+}
+
+async function timedFetch(url,options){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),12000);
+ try{return await fetch(url,{...options,signal:controller.signal});}
+ catch{throw new Error('Der Server ist gerade nicht erreichbar. Bitte versuche es gleich noch einmal.');}
+ finally{clearTimeout(timer);}
 }
 
 async function cloudRequest(path,payload,token){
  const headers={apikey:cloudKey};
  if(token) headers.Authorization='Bearer '+token;
  if(payload!==undefined) headers['Content-Type']='application/json';
- const response=await fetch(cloudUrl+'/'+path,{
+ const response=await timedFetch(cloudUrl+'/'+path,{
   method:payload===undefined?'GET':'POST',headers,body:JSON.stringify(payload)
  });
- const data=await response.json();
- if(!response.ok) throw Object.assign(new Error(data.error||'Die Anfrage ist fehlgeschlagen.'),{status:response.status});
+ const data=await response.json().catch(()=>null);
+ if(!response.ok || !data) throw Object.assign(new Error(data?.error||'Der Server konnte die Anfrage gerade nicht beantworten. Bitte versuche es erneut.'),{status:response.status});
  return data;
 }
 
-async function refreshCloudSession(){
+async function refreshCloudSession(rejectedToken){
+ const needsRenewal=session=>session && (session.access_token===rejectedToken || !(session.expires_at>Date.now()/1000+60));
  cloudSession=readCloudSession();
- if(!cloudSession || cloudSession.expires_at>Date.now()/1000+60) return;
+ if(!needsRenewal(cloudSession)) return;
  if(!sessionRefresh){
   const renew=async ()=>{
    const latest=readCloudSession();
-   if(!latest || latest.expires_at>Date.now()/1000+60){cloudSession=latest;return;}
-   try{saveCloudSession(await cloudRequest('refresh',{refresh_token:latest.refresh_token}));}
+   if(!needsRenewal(latest)){cloudSession=latest;return;}
+   try{
+    const renewed=await cloudRequest('refresh',{refresh_token:latest.refresh_token});
+    if(readCloudSession()?.refresh_token===latest.refresh_token) saveCloudSession(renewed);
+   }
    catch(error){
     if(error.status!==401) throw error;
-    saveCloudSession(null);
+    if(readCloudSession()?.refresh_token===latest.refresh_token) saveCloudSession(null);
    }
+   cloudSession=readCloudSession();
   };
   sessionRefresh=(navigator.locks?navigator.locks.request(sessionKey,renew):renew())
    .finally(()=>{sessionRefresh=undefined;});
@@ -178,6 +208,22 @@ async function api(path, payload) {
    trainingAudio=undefined;
    trainingAudioQueue=Promise.resolve();
    return {ok:true};
+  }
+  if(path==='state'){
+   const token=cloudSession?.access_token;
+   try{return await cloudRequest(path,undefined,token);}
+   catch(error){
+    if(error.status!==401 || !token) throw error;
+    await refreshCloudSession(token);
+    const renewed=cloudSession?.access_token;
+    if(!renewed) return {user:null};
+    try{return await cloudRequest(path,undefined,renewed);}
+    catch(retryError){
+     if(retryError.status!==401) throw retryError;
+     if(readCloudSession()?.access_token===renewed) saveCloudSession(null);
+     return {user:null};
+    }
+   }
   }
   if(path==='coins/buy') payload={...payload,requestId:crypto.randomUUID()};
   return cloudRequest(path,payload,cloudSession?.access_token);
@@ -342,32 +388,68 @@ function renderRanking() {
  target.append(list);
 }
 
-let portraitOwner;
-function syncPortraits(){
- const owner=state.user?.id;
- if(owner===portraitOwner) return;
- portraitOwner=owner;
- for(const portrait of document.querySelectorAll('[data-portrait]')){
-  if(portrait.src.startsWith('blob:')) URL.revokeObjectURL(portrait.src);
-  portrait.removeAttribute('src');
-  if(!owner) continue;
+let portraitLoad;
+const portraits=[...document.querySelectorAll('[data-portrait]')];
+const portraitRetry=$('#portrait-retry');
+
+function clearPortrait(portrait){
+ const src=portrait.getAttribute('src');
+ portrait.removeAttribute('src');
+ if(src?.startsWith('blob:')) URL.revokeObjectURL(src);
+}
+
+async function loadPortrait(portrait,load){
+ if(portraitLoad!==load || load.pending.has(portrait) || load.ready.has(portrait)) return;
+ load.pending.add(portrait);
+ try{
   const path='/portrait/'+portrait.dataset.portrait;
-  const headers=cloudUrl?{apikey:cloudKey,Authorization:'Bearer '+cloudSession.access_token}:{};
-  fetch(cloudUrl?cloudUrl+path:'/api'+path,{headers})
-   .then(response=>{
-    if(!response.ok) throw new Error('Ein Foto konnte nicht geladen werden.');
-    return response.blob();
-   })
-   .then(blob=>{
-    if(portraitOwner===owner) portrait.src=URL.createObjectURL(blob);
-   })
-   .catch(error=>{
-    if(portraitOwner===owner) setError('#notice',error.message);
-   });
+  let response;
+  for(let attempt=0;attempt<2;attempt++){
+   if(portraitLoad!==load) return;
+   try{
+    if(cloudUrl) await refreshCloudSession(attempt?load.rejectedToken:undefined);
+    if(portraitLoad!==load || (cloudUrl&&!cloudSession)) return;
+    const token=cloudSession?.access_token;
+    const headers=cloudUrl?{apikey:cloudKey,Authorization:'Bearer '+token}:{};
+    response=await timedFetch(cloudUrl?cloudUrl+path:'/api'+path,{headers});
+    if(response.status===401 && token) load.rejectedToken=token;
+    if(!response.ok || !response.headers.get('Content-Type')?.startsWith('image/')) throw new Error('Foto nicht verfügbar.');
+    const blob=await response.blob();
+    if(portraitLoad!==load) return;
+    portrait.src=URL.createObjectURL(blob);
+    await portrait.decode();
+    load.ready.add(portrait);
+    return;
+   } catch {
+    if(portraitLoad!==load) return;
+    clearPortrait(portrait);
+    if(!attempt) await new Promise(resolve=>setTimeout(resolve,750));
+   }
+  }
+ } finally {
+  load.pending.delete(portrait);
+  if(portraitLoad===load) portraitRetry.hidden=load.pending.size>0 || load.ready.size===portraits.length;
  }
 }
 
+function syncPortraits(){
+ const owner=state.user?.id;
+ if(owner!==portraitLoad?.owner){
+  portraits.forEach(clearPortrait);
+  portraitLoad=owner?{owner,pending:new Set(),ready:new Set()}:undefined;
+  portraitRetry.hidden=true;
+ }
+ if(!portraitLoad || portraitLoad.ready.size===portraits.length) return;
+ portraitRetry.hidden=true;
+ portraits.forEach(portrait=>loadPortrait(portrait,portraitLoad));
+}
+
+portraitRetry.addEventListener('click',syncPortraits);
+window.addEventListener('online',()=>{if(state?.user) syncPortraits();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden && state?.user) syncPortraits();});
+
 async function refresh() {
+ const hadCloudSession=Boolean(cloudSession);
  state=await api('state');
  const signedIn=Boolean(state.user);
  for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
@@ -375,6 +457,7 @@ async function refresh() {
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
  syncPortraits();
  if(signedIn) render();
+ else if(hadCloudSession && !cloudSession) setError('#notice','Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.');
  syncReportAccount();
 }
 
@@ -551,6 +634,8 @@ $('#auth-form').addEventListener('submit',async event=>{
  try {
   await api(register?'register':'login',Object.fromEntries(new FormData(event.target)));
   await refresh();
+  if(!state.user) throw new Error('Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.');
+  setError('#notice');
   $('#auth').close();
   event.target.reset();
  } catch(error){setError('#auth-error',error.message);}
