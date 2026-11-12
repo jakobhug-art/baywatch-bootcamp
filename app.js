@@ -236,6 +236,17 @@ async function api(path, payload) {
  return data;
 }
 
+function dailyPrankSymbols(items,userId){
+ const counts=new Map();
+ for(const {kind,recipient,detail} of items){
+  if(kind==='symbol'&&recipient===userId) counts.set(detail,(counts.get(detail)||0)+1);
+ }
+ if(!counts.size) return '';
+ return `<div class="prank-symbols" role="group" aria-label="Aktive Symbol-Pranks">${[...counts].map(([symbol,count])=>
+  `<span class="prank-symbol">${escapeHtml(symbol)}${count>1?`<small>×${count}</small>`:''}</span>`
+ ).join('')}</div>`;
+}
+
 function render() {
  const {deck,user,marks,quantities,activeDays,coins} = state;
  $('#challenge-admin').hidden=!user?.admin;
@@ -246,15 +257,16 @@ function render() {
  }
  const amounts = visibleAmounts();
  const rest=Boolean(coins?.rest);
- const symbol=coins?.items.find(item=>item.kind==='symbol'&&item.recipient===user.id)?.detail;
+ const symbols=dailyPrankSymbols(coins?.items||[],user.id);
  const savedAmounts=new Map(quantities.map(item=>[item.exercise,item.amount]));
  const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:rest||deck.daily.every(item=>(savedAmounts.get(item.id)||0)>=item.target);
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
  renderDaySummary(amounts);
- const extra=coins?.items.find(item=>['exercise','return'].includes(item.kind)&&item.recipient===user.id&&item.status!=='declined'&&!item.recipient_done);
- $('#daily-extra').hidden=!extra;
- $('#daily-extra').textContent=extra?'Extraübung für heute: '+extra.detail+' · Ansehen':'';
+ const extras=coins?.items.filter(item=>['exercise','return'].includes(item.kind)&&item.recipient===user.id&&item.status!=='declined'&&!item.recipient_done)||[];
+ $('#daily-extra').hidden=!extras.length;
+ $('#daily-extra').textContent=extras.length>1?extras.length+' offene Extraübungen · Ansehen'
+  :extras.length?'Extraübung für heute: '+extras[0].detail+' · Ansehen':'';
  $('#week-summary').textContent = marks.length+' / '+deck.weekly.length+' erledigt';
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name)};
@@ -262,7 +274,7 @@ function render() {
   const unit=dailyTerms[item.id]||(item.unit==='Sek.'?'Sekunde':'Wiederholung');
   const [normal,bonus]=rates(item);
   return `<article class="card ${item.color}">
-   ${symbol?`<span class="prank-symbol" aria-label="Symbol-Prank">${symbol}</span>`:''}
+   ${symbols}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
    <h3>${item.name}</h3>
    <dl class="daily-rates">

@@ -79,14 +79,12 @@ export function setupCoins(db,fail){
    if(!Number.isSafeInteger(recipient)||recipient===user||!db.prepare('SELECT 1 FROM users WHERE id=?').get(recipient)) fail(400,'Wähle eine Person.');
    if(kind==='symbol'){
     if(!symbols.includes(detail)) fail(400,'Wähle ein Symbol.');
-    if(db.prepare("SELECT 1 FROM pranks WHERE recipient=? AND kind='symbol' AND expires>=?").get(recipient,day)) fail(409,'Diese Person hat bereits einen aktiven Symbol-Prank.');
     const end=new Date(day+'T00:00:00Z');
     end.setUTCDate(end.getUTCDate()+6);
     expires=end.toISOString().slice(0,10);
    }
    if(kind==='exercise'||kind==='return'){
     if(!exercises.includes(detail)) fail(400,'Wähle eine Extraübung.');
-    if(db.prepare("SELECT 1 FROM pranks WHERE recipient=? AND day=? AND kind IN ('exercise','return')").get(recipient,day)) fail(409,'Diese Person hat heute bereits eine Extraübung erhalten.');
    }
    if(kind==='voice'){
     if(!audioTypes.includes(detail)||typeof input.audio!=='string'||input.audio.length>maxAudio*4/3||!/^[A-Za-z0-9+/]+={0,2}$/.test(input.audio)) fail(400,'Die Aufnahme fehlt oder ist zu groß.');
