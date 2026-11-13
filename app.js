@@ -66,6 +66,53 @@ const dailyTerms = {
  squat:'Kniebeuge'
 };
 const weeklyDifficulty={Leicht:'Einfach',Mittel:'Mittel',Schwer:'Schwierig'};
+const plankStopwatch=`<div class="plank-stopwatch" id="plank-stopwatch" role="group" aria-label="Plank-Stoppuhr">
+ <span role="timer">00:00</span>
+ <div class="plank-stopwatch-actions">
+  <button type="button" data-stopwatch="start" aria-label="Stoppuhr starten" title="Start">▶</button>
+  <button type="button" data-stopwatch="stop" aria-label="Stoppuhr stoppen" title="Stop">■</button>
+  <button type="button" data-stopwatch="reset" aria-label="Stoppuhr zurücksetzen" title="Reset">↺</button>
+ </div>
+</div>`;
+let stopwatchDay;
+let stopwatchOwner;
+let stopwatchElapsed=0;
+let stopwatchStarted=null;
+let stopwatchTick;
+
+function updateStopwatch(){
+ const clock=$('#plank-stopwatch');
+ if(!clock) return;
+ const running=stopwatchStarted!==null;
+ const elapsed=stopwatchElapsed+(running?performance.now()-stopwatchStarted:0);
+ const seconds=Math.floor(elapsed/1000);
+ const time=[Math.floor(seconds/60),seconds%60].map(part=>String(part).padStart(2,'0')).join(':');
+ const display=clock.querySelector('[role="timer"]');
+ if(display.textContent!==time) display.textContent=time;
+}
+
+function changeStopwatch(action){
+ if(action==='start'){
+  if(stopwatchStarted!==null) return;
+  stopwatchStarted=performance.now();
+  stopwatchTick=setInterval(updateStopwatch,125);
+ }else{
+  if(action==='reset') stopwatchElapsed=0;
+  else if(stopwatchStarted!==null) stopwatchElapsed+=performance.now()-stopwatchStarted;
+  stopwatchStarted=null;
+  clearInterval(stopwatchTick);
+ }
+ updateStopwatchControls();
+}
+
+function updateStopwatchControls(){
+ const clock=$('#plank-stopwatch');
+ if(!clock) return;
+ const running=stopwatchStarted!==null;
+ clock.querySelector('[data-stopwatch="start"]').setAttribute('aria-disabled',String(running));
+ clock.querySelector('[data-stopwatch="stop"]').setAttribute('aria-disabled',String(!running));
+ updateStopwatch();
+}
 
 function estimatedPoints(card,amount){
  const extra=Math.min(Math.max(amount-card.target,0),card.target);
@@ -299,7 +346,7 @@ function render() {
   return `<article class="card exercise-card ${item.color}">
    ${symbols}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
-   <h3>${item.name}</h3>
+   ${item.id==='plank'?`<div class="plank-heading"><h3>${item.name}</h3>${plankStopwatch}</div>`:`<h3>${item.name}</h3>`}
    <dl class="daily-rates">
     <div><dt>Punkte pro ${unit}</dt><dd>${normal}</dd></div>
     <div><dt>Bonus-Punkte pro ${unit}</dt><dd>${bonus}</dd></div>
@@ -339,6 +386,7 @@ function render() {
    <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
   </article>`:'');
+ updateStopwatchControls();
  renderDaySummary(amounts);
  $('#weekly').innerHTML = deck.weekly.map(([id,icon,name,description,points,color,category,difficulty],index)=>{
   const done=marks.some(mark=>mark.exercise===id);
@@ -626,6 +674,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden && state?.
 async function refresh() {
  const hadCloudSession=Boolean(cloudSession);
  state=await api('state');
+ if(stopwatchOwner!==state.user?.id || stopwatchDay!==state.deck?.day){
+  stopwatchOwner=state.user?.id;
+  stopwatchDay=state.deck?.day;
+  changeStopwatch('reset');
+ }
  const signedIn=Boolean(state.user);
  if(!signedIn && memberDialog.open) memberDialog.close();
  syncVoiceArchive();
@@ -755,6 +808,11 @@ function saveAmount(form, delta) {
 }
 
 $('#daily').addEventListener('click',event=>{
+ const stopwatchButton=event.target.closest('[data-stopwatch]');
+ if(stopwatchButton){
+  if(stopwatchButton.getAttribute('aria-disabled')!=='true') changeStopwatch(stopwatchButton.dataset.stopwatch);
+  return;
+ }
  if(event.target.closest('#workout-finish')){
   if(!busy && !quantityQueue.size && !state.workoutFinished){
    setError('#workout-photo-status');
