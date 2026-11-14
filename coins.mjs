@@ -24,16 +24,20 @@ export function setupCoins(db,fail){
   CREATE VIEW effective_quantities AS
    WITH legacy(exercise,target,points) AS (VALUES ${daily.map(item=>`('${item.id}',${item.target},${exercisePoints(item,item.target)})`).join(',')}),
    targets(user_id,day,exercise,target,points) AS (
-    SELECT r.user_id,r.day,item.value->>'id',item.value->>'target',(item.value->>'target')/(item.value->>'step')
+    SELECT r.user_id,r.day,item.value->>'id',item.value->>'target',COALESCE(item.value->>'goalPoints',(item.value->>'target')/(item.value->>'step'))
     FROM rest_days r JOIN challenge_periods p ON p.period=r.day AND p.kind='daily' JOIN json_each(p.data) item
     UNION ALL
     SELECT r.user_id,r.day,l.* FROM rest_days r CROSS JOIN legacy l
     WHERE NOT EXISTS(SELECT 1 FROM challenge_periods p WHERE p.period=r.day AND p.kind='daily')
+   ), credited(user_id,day,exercise,amount,points,reached) AS (
+    SELECT q.* FROM quantities q WHERE NOT EXISTS(SELECT 1 FROM rest_days r WHERE r.user_id=q.user_id AND r.day=q.day)
+    UNION ALL
+    SELECT t.user_id,t.day,t.exercise,MAX(t.target,COALESCE(q.amount,0)),MAX(t.points,COALESCE(q.points,0)),1
+    FROM targets t LEFT JOIN quantities q ON q.user_id=t.user_id AND q.day=t.day AND q.exercise=t.exercise
    )
-   SELECT q.* FROM quantities q WHERE NOT EXISTS(SELECT 1 FROM rest_days r WHERE r.user_id=q.user_id AND r.day=q.day)
-   UNION ALL
-   SELECT t.user_id,t.day,t.exercise,MAX(t.target,COALESCE(q.amount,0)),MAX(t.points,COALESCE(q.points,0)),1
-   FROM targets t LEFT JOIN quantities q ON q.user_id=t.user_id AND q.day=t.day AND q.exercise=t.exercise;
+   SELECT c.* FROM credited c LEFT JOIN daily_skips s ON s.user_id=c.user_id AND s.day=c.day
+   LEFT JOIN challenge_periods p ON p.period=c.day AND p.kind='daily'
+   WHERE c.exercise<>COALESCE(s.exercise,CASE WHEN json_array_length(p.data)>1 THEN 'jogging' END,'');
  `);
  const balance=db.prepare('SELECT COALESCE(SUM(amount),0) AS amount FROM coin_entries WHERE user_id=?');
  const credit=db.prepare('INSERT INTO coin_entries(user_id,amount,label,day) VALUES(?,?,?,?)');

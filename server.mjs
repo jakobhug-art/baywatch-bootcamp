@@ -54,7 +54,12 @@ db.exec(`CREATE TABLE IF NOT EXISTS scratch_tickets(
  PRIMARY KEY(user_id,day,turn), FOREIGN KEY(user_id,day,turn) REFERENCES wheel_spins(user_id,day,turn) ON DELETE CASCADE
 )`);
 const availableTickets=db.prepare(`SELECT day,turn,symbols,claimed_on FROM scratch_tickets
- WHERE user_id=? AND (day=? OR claimed_on IS NULL OR claimed_on=?) ORDER BY day DESC,turn DESC`);
+ WHERE user_id=? AND day=? ORDER BY turn DESC`);
+db.exec(`CREATE TABLE IF NOT EXISTS daily_skips(
+ user_id INTEGER NOT NULL REFERENCES users(id),day TEXT NOT NULL,exercise TEXT NOT NULL,PRIMARY KEY(user_id,day)
+)`);
+const selectedSkip=db.prepare('SELECT exercise FROM daily_skips WHERE user_id=? AND day=?');
+const defaultSkip=deck=>deck.daily.length>1&&deck.daily.some(card=>card.id==='jogging')?'jogging':null;
 const challenges=setupChallenges(db,fail);
 const coins=setupCoins(db,fail);
 const rankings=setupRankings(db,{legacyCount:daily.length,monthTarget,monthBonus,rewardsStart:seasonStart(schedule().day)});
@@ -217,7 +222,8 @@ createServer(async (req,res)=>{
     handle:member.handle,
     balance:coins.balance(memberId),
     rest:Boolean(db.prepare('SELECT 1 FROM rest_days WHERE user_id=? AND day=?').get(memberId,deck.day)),
-    daily:deck.daily.map(({id,name,unit,target})=>({name,unit,target,amount:amounts.get(id)??0})),
+    daily:deck.daily.map(({id,name,unit,target})=>({name,unit,target,amount:amounts.get(id)??0,
+     skipped:id===(selectedSkip.get(memberId,deck.day)?.exercise??defaultSkip(deck))})),
     weekly:deck.weekly.filter(([id])=>weeklyDone.has(id)).map(([, ,name])=>name)
    });
   }
@@ -269,10 +275,21 @@ createServer(async (req,res)=>{
    res.writeHead(200,{'Content-Type':recording.detail,'Cache-Control':'private, no-store'});
    return res.end(recording.audio);
   }
+  if(req.method==='POST' && path==='/api/workout/skip'){
+   if(!user) fail(401,'Bitte melde dich an.');
+   const input=await body(req);
+   if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
+   if(!defaultSkip(deck) || !deck.daily.some(card=>card.id===input.exercise)) fail(400,'Wähle eine Tagesübung zum Streichen.');
+   if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
+   db.prepare('INSERT INTO daily_skips VALUES(?,?,?) ON CONFLICT(user_id,day) DO UPDATE SET exercise=excluded.exercise')
+    .run(user.id,deck.day,input.exercise);
+   return reply({ok:true});
+  }
   if(req.method==='POST' && path==='/api/wheel/scratch'){
    if(!user) fail(401,'Bitte melde dich an.');
    const input=await body(req);
    if(typeof input?.day!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.day) || ![1,2].includes(input.turn)) fail(400,'Ungültiges Los.');
+   if(input.day!==deck.day || schedule().day!==deck.day) fail(409,'Dieses Los ist abgelaufen.');
    const prize=coins.transaction(()=>{
     const ticket=db.prepare('SELECT symbols,claimed_on FROM scratch_tickets WHERE user_id=? AND day=? AND turn=?')
      .get(user.id,input.day,input.turn);
@@ -293,8 +310,9 @@ createServer(async (req,res)=>{
    const input=await body(req);
    if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
    if(path==='/api/wheel/spin'){
-    if(dailyPassed.get(user.id,deck.day).count!==deck.daily.length) fail(403,'Erreiche zuerst alle Tagesziele.');
     const spins=wheelResults.all(user.id,deck.day);
+    if(!spins.length && defaultSkip(deck) && !selectedSkip.get(user.id,deck.day)) fail(409,'Streiche zuerst eine Übung für heute.');
+    if(dailyPassed.get(user.id,deck.day).count!==deck.daily.length-Number(Boolean(defaultSkip(deck)))) fail(403,'Erreiche zuerst alle Tagesziele.');
     const nextTurn=spins.length+1;
     if(input.turn!==nextTurn || nextTurn>2 || (nextTurn===2 && !spins[0].bonus)) fail(409,'Heute ist kein weiterer Dreh verfügbar.');
     const slot=drawWheelSlot(randomInt);
@@ -323,6 +341,7 @@ createServer(async (req,res)=>{
    const exercise=deck.daily.find(item=>item.id===input?.id);
    if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
    if(!exercise || !Number.isInteger(input.amount) || input.amount<0 || input.amount>10000) fail(400,'Gib eine ganze Zahl zwischen 0 und 10.000 ein.');
+   if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
    db.prepare(`
     INSERT INTO quantities VALUES(?,?,?,?,?,?)
     ON CONFLICT(user_id,day,exercise) DO UPDATE SET amount=excluded.amount,points=excluded.points,reached=excluded.reached
@@ -347,14 +366,17 @@ createServer(async (req,res)=>{
    const quantities=user?db.prepare('SELECT exercise,amount,points FROM quantities WHERE user_id=? AND day=?').all(user.id,deck.day):[];
    const activeDays=user?db.prepare(`
     SELECT q.day FROM effective_quantities q LEFT JOIN challenge_periods p ON p.period=q.day AND p.kind='daily'
-    WHERE q.user_id=? AND q.day LIKE ? AND q.reached=1 GROUP BY q.day HAVING COUNT(*)=COALESCE(json_array_length(p.data),?)
+    WHERE q.user_id=? AND q.day LIKE ? AND q.reached=1 GROUP BY q.day
+    HAVING COUNT(*)=COALESCE(json_array_length(p.data),?)-EXISTS(SELECT 1 FROM json_each(p.data) WHERE value->>'id'='jogging' AND json_array_length(p.data)>1)
    `).all(user.id,deck.month+'-%',daily.length).map(row=>row.day):[];
    const standings=user?rankings.state(deck):{};
    const spins=user?wheelResults.all(user.id,deck.day):[];
-   const scratchTickets=user?availableTickets.all(user.id,deck.day,deck.day).map(row=>({
+   const scratchTickets=user?availableTickets.all(user.id,deck.day).map(row=>({
     day:row.day,turn:row.turn,values:JSON.parse(row.symbols),claimed:Boolean(row.claimed_on)
    })):[];
-   return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,scratchTickets,coins:user?coins.state(user.id,deck.day,Boolean(user.admin)):null});
+   return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,scratchTickets,
+    defaultSkip:defaultSkip(deck),skippedExercise:user?selectedSkip.get(user.id,deck.day)?.exercise??null:null,
+    workoutFinished:spins.length>0,coins:user?coins.state(user.id,deck.day,Boolean(user.admin)):null});
   }
   fail(404,'Seite nicht gefunden.');
  } catch(error) {

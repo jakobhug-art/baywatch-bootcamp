@@ -13,7 +13,7 @@
  <header class="top"><div class="shell top-inner">
   <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small data-member hidden>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
   <nav aria-label="Hauptnavigation" data-member hidden>
-   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a><a href="#info">Info</a>
+   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a><a href="#fettstrafe" id="food-polls-link" hidden>Fettstrafe</a><a href="#info">Info</a>
   </nav>
   <button class="outline" id="account">Anmelden</button>
  </div></header>
@@ -54,6 +54,7 @@
   <section id="heute" class="section">
    <div class="section-heading"><div><p class="eyebrow accent">TÄGLICHES TRAINING</p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
    <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Je fehlendem Ziel werden beim Abschluss oder am Tagesende 10 Punkte abgezogen.</p>
+   <label class="skip-choice" id="skip-choice" hidden>Heute streichen <select id="skip-exercise" aria-label="Eine Übung für heute streichen"></select></label>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
    <div id="daily-extra-card" class="panel" hidden></div>
@@ -140,11 +141,26 @@
     <button class="outline" id="voice-archive-more" type="button" hidden>Ältere Aufnahmen laden</button>
    </details>
   </section>
+  <section id="fettstrafe" class="section" hidden aria-labelledby="food-polls-heading">
+   <div class="section-heading"><h2 id="food-polls-heading">Fettstrafe</h2></div>
+   <details class="panel" id="food-polls-panel">
+    <summary>Abstimmungen ansehen oder starten</summary>
+    <p>Bei Fast Food kann die Gruppe mit Foto abstimmen. Eine Mehrheit aller Stimmberechtigten für „Schuldig“ gibt 30 Punkte Abzug. Die betroffene Person stimmt nicht mit. Das Beweisfoto ist sieben Tage lang für angemeldete Mitglieder sichtbar.</p>
+    <form id="food-poll-form" class="photo-form">
+     <label>Gruppenmitglied<select name="target" required></select></label>
+     <label>Beweisfoto<input name="photo" type="file" accept="image/*" required></label>
+     <button class="primary" type="submit">Abstimmung starten</button>
+    </form>
+    <p id="food-poll-status" role="status" hidden></p>
+    <div id="food-poll-list"></div>
+   </details>
+  </section>
   <section id="info" class="section" aria-labelledby="info-heading">
    <h2 id="info-heading">So funktioniert die App</h2>
    <details class="panel info-card" open>
     <summary>Training, Punkte und Workout-Abschluss</summary>
-    <p>Trag bei jeder Tagesübung Wiederholungen oder Sekunden ein. Du kannst die Plus- und Minus-Tasten nutzen oder die Zahl direkt eingeben und speichern.</p>
+    <p>Streiche jeden Tag eine Übung. Nur die übrigen Übungen zählen für Punkte, Abzüge und das Monatsziel. Ohne Auswahl bleibt beim Tageswechsel Joggen gestrichen, sofern es im Tagesplan steht. Das Laufziel liegt bei 5 km für 60 Grundpunkte.</p>
+    <p>Trag Wiederholungen, Sekunden oder Kilometer ein. Du kannst die Plus- und Minus-Tasten nutzen oder die Zahl direkt eingeben und speichern.</p>
     <p>Bis zum Soll sammelst du Grundpunkte. Alles darüber zählt mit einem Viertel des normalen Satzes. Der Bonus endet beim doppelten Soll oder bei 75 Punkten pro Übung. Grund- und Bonuspunkte werden getrennt auf ganze Punkte abgerundet.</p>
     <p>Unter „Workout abschließen“ siehst du deine Punkte und Abzüge. Je fehlendem Ziel gehen 10 Punkte ab, entweder beim Abschluss oder um Mitternacht. Ein Foto bringt beim Abschluss 10 Punkte extra. Wenn du den Abschluss ohne Foto per Haken bestätigst, werden 20 Punkte abgezogen. In beiden Fällen wird das Glücksrad freigeschaltet.</p>
    </details>
@@ -159,7 +175,7 @@
    <details class="panel info-card">
     <summary>Glücksrad und freie Tage</summary>
     <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Das kleine Goldfeld bringt mit 1 % Chance direkt 15 Münzen.</p>
-    <p>Jeder Dreh gibt dir ein Rubbellos. Drei gleiche Zahlen gewinnen. Die Chancen pro Los sind 50 % für eine Niete, 24 % für 1 Münze, 15 % für 2 Münzen, 10 % für 3 Münzen und 1 % für 15 Münzen. Offene Lose bleiben bis zum Aufdecken verfügbar.</p>
+    <p>Jeder Dreh gibt dir ein Rubbellos für denselben Tag. Drei gleiche Zahlen gewinnen. Die Chancen pro Los sind 50 % für eine Niete, 24 % für 1 Münze, 15 % für 2 Münzen, 10 % für 3 Münzen und 1 % für 15 Münzen.</p>
     <p>Rad-Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung gleichst du 30 Minuspunkte mit 30 zusätzlichen Liegestützen aus.</p>
     <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel.</p>
    </details>
@@ -226,7 +242,7 @@
      <label>Anleitung<textarea name="hint" maxlength="300" rows="2"></textarea></label>
      <fieldset id="challenge-daily">
       <legend>Tagesziel und Wertung</legend>
-      <label>Einheit<select name="unit"><option>Wdh.</option><option>Sek.</option></select></label>
+      <label>Einheit<select name="unit"><option>Wdh.</option><option>Sek.</option><option value="m">Meter</option></select></label>
       <label>Zielmenge<input name="target" type="number" min="1" max="10000" value="10"></label>
       <label>Punkte beim Soll<input name="goalPoints" type="number" min="1" max="75" value="60" required></label>
       <label>Schrittweite für Plus und Minus<input name="step" type="number" min="1" max="10000" value="1"></label>
@@ -278,15 +294,17 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.31</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.32</small></footer>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>
    <button class="outline" id="close-workout-photo" type="button" aria-label="Schließen">✕</button>
   </div>
   <p>Für den Abschluss mit Foto bekommst du 10 Punkte extra. Alle angemeldeten Mitglieder können das Foto in der Galerie der laufenden Season sehen.</p>
-  <form id="workout-photo-form">
-   <label>Foto auswählen<input name="photo" type="file" accept="image/*" required></label>
+  <form id="workout-photo-form" class="photo-form">
+   <label class="outline photo-source">Foto auswählen<input name="photo" type="file" accept="image/*"></label>
+   <label class="outline photo-source">Foto aufnehmen<input name="camera" type="file" accept="image/*" capture="user"></label>
+   <p id="workout-photo-selection" role="status" hidden></p>
    <label class="challenge-enabled"><input name="confirmNoPhoto" type="checkbox"> Ohne Foto abschließen und 20 Punkte Abzug bestätigen</label>
    <button class="primary" id="workout-photo-submit" type="submit">Foto hochladen und abschließen</button>
    <p id="workout-photo-status" role="status" hidden></p>

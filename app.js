@@ -8,7 +8,7 @@ function showCoins(element,amount,suffix=''){
  icon.setAttribute('aria-label','Münzen');
  element.replaceChildren(String(amount)+' ',icon,suffix);
 }
-const icons = {push:'↗',plank:'▱',pull:'↟',situp:'◒',squat:'◇'};
+const icons = {push:'↗',plank:'▱',pull:'↟',situp:'◒',squat:'◇',jogging:'↗'};
 const categories = ['Bewegung','Ernährung','Spaß & Abwechslung'];
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -63,8 +63,12 @@ const dailyTerms = {
  plank:'Plank-Sekunde',
  pull:'Klimmzug',
  situp:'Bauchaufzug',
- squat:'Kniebeuge'
+ squat:'Kniebeuge',
+ jogging:'Kilometer'
 };
+const amountScale=unit=>unit==='m'?1000:1;
+const displayUnit=unit=>unit==='m'?'km':unit;
+const displayAmount=(amount,unit)=>rateFormat.format(amount/amountScale(unit));
 const weeklyDifficulty={Leicht:'Einfach',Mittel:'Mittel',Schwer:'Schwierig'};
 const plankStopwatch=`<div class="plank-stopwatch" id="plank-stopwatch" role="group" aria-label="Plank-Stoppuhr">
  <span role="timer">00:00</span>
@@ -124,7 +128,7 @@ function estimatedPoints(card,amount){
 }
 
 function rates(card){
- const normal=card.goalPoints?card.goalPoints/card.target:1/card.step;
+ const normal=(card.goalPoints?card.goalPoints/card.target:1/card.step)*amountScale(card.unit);
  return [rateFormat.format(normal),rateFormat.format(card.goalPoints===75?0:normal/4)];
 }
 
@@ -143,16 +147,17 @@ function renderDaySummary(amounts){
  const {deck,spins,coins,photoBonus=0}=state;
  const wheelPoints=spins.reduce((sum,spin)=>sum+(spin.completed?spin.reward:spin.initial),0);
  const rest=Boolean(coins?.rest);
- const points=deck.daily.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?estimatedPoints(item,item.target):0),wheelPoints+photoBonus);
- const reached=rest?deck.daily.length:deck.daily.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
- $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+deck.daily.length+' Ziele')+' · '+points+' P';
+ const counted=deck.daily.filter(item=>item.id!==(state.skippedExercise||state.defaultSkip));
+ const points=counted.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?estimatedPoints(item,item.target):0),wheelPoints+photoBonus);
+ const reached=rest?counted.length:counted.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
+ $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+counted.length+' Ziele')+' · '+points+' P';
  const workout=$('#workout-summary');
  if(!workout) return;
  let earnedBase=0;
  let availableBase=0;
  let earnedBonus=0;
  let availableBonus=0;
- for(const card of deck.daily){
+ for(const card of counted){
   const base=estimatedPoints(card,card.target);
   const earned=Math.max(amounts.get(card.id)?.points||0,rest?base:0);
   earnedBase+=Math.min(earned,base);
@@ -163,13 +168,13 @@ function renderDaySummary(amounts){
  $('#workout-base').textContent=earnedBase+' / '+availableBase+' P';
  $('#workout-bonus').textContent=earnedBonus+' / '+availableBonus+' P';
  $('#workout-photo-bonus').textContent=signed(photoBonus)+' P';
- const penalty=-10*(deck.daily.length-reached);
+ const penalty=-10*(counted.length-reached);
  const workoutPoints=earnedBase+earnedBonus+penalty;
  $('#workout-penalty').textContent=signed(penalty)+' P';
  $('#workout-total').textContent=(workoutPoints+photoBonus)+' P';
  $('#workout-total-with-photo').textContent=(workoutPoints+10)+' P';
  $('#workout-total-without-photo').textContent=(workoutPoints-20)+' P';
- $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size);
+ $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size || state.defaultSkip&&!state.skippedExercise);
 }
 
 const cloudUrl = document.querySelector('meta[name="bootcamp-api"]')?.content;
@@ -317,7 +322,7 @@ function render() {
  const rest=Boolean(coins?.rest);
  const symbols=dailyPrankSymbols(coins?.items||[],user.id);
  const savedAmounts=new Map(quantities.map(item=>[item.exercise,item.amount]));
- const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:rest||deck.daily.every(item=>(savedAmounts.get(item.id)||0)>=item.target);
+ const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:Boolean(!state.defaultSkip||state.skippedExercise)&&(rest||deck.daily.every(item=>item.id===(state.skippedExercise||state.defaultSkip)||(savedAmounts.get(item.id)||0)>=item.target));
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
  renderDaySummary(amounts);
@@ -338,25 +343,34 @@ function render() {
   $('#info-weekly-points').textContent='Für neu ausgeloste Aufgaben gelten '+Leicht+' Punkte für einfach, '+Mittel+' für mittel und '+Schwer+' für schwierig.';
  }
  $('#info-month-goal').textContent='Das Monatsziel bringt '+deck.monthBonus+' Bonuspunkte für '+deck.monthTarget+' vollständige Trainingstage.';
+ const skipSelect=$('#skip-exercise');
+ $('#skip-choice').hidden=!state.defaultSkip;
+ skipSelect.disabled=Boolean(state.workoutFinished);
+ setOptions(skipSelect,[['','Übung auswählen'],...deck.daily.map(item=>[item.id,item.name])]);
+ skipSelect.value=state.skippedExercise||'';
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name)};
   const {amount=0,points=0} = amounts.get(item.id)||{};
-  const unit=dailyTerms[item.id]||(item.unit==='Sek.'?'Sekunde':'Wiederholung');
+  const unit=dailyTerms[item.id]||({m:'Kilometer','Sek.':'Sekunde'}[item.unit]??'Wiederholung');
   const [normal,bonus]=rates(item);
-  return `<article class="card exercise-card ${item.color}">
+  const skipped=item.id===(state.skippedExercise||state.defaultSkip);
+  const step=displayAmount(item.step,item.unit);
+  const scale=amountScale(item.unit);
+  const actualUnit=displayUnit(item.unit);
+  return `<article class="card exercise-card ${item.color}${skipped?' skipped-exercise':''}">
    ${symbols}
-   <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${points} P</span></div>
+   <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${skipped?(state.skippedExercise?'Gestrichen':'Vorauswahl'):points+' P'}</span></div>
    ${item.id==='plank'?`<div class="plank-heading"><h3>${item.name}</h3>${plankStopwatch}</div>`:`<h3>${item.name}</h3>`}
    <dl class="daily-rates">
     <div><dt>Punkte pro ${unit}</dt><dd>${normal}</dd></div>
     <div><dt>Bonus-Punkte pro ${unit}</dt><dd>${bonus}</dd></div>
    </dl>
    <progress max="${item.target}" value="${Math.min(amount,item.target)}" aria-label="Tagesziel ${item.name}"></progress>
-   <p class="progress-label">${amount} / ${item.target} ${item.unit}${amount>=item.target?' · ✓':''}</p>
-   <form class="counter" data-id="${item.id}"><fieldset class="counter-fields" ${state.workoutFinished?'disabled':''}>
-    <button type="button" data-delta="-${item.step}" aria-label="${item.name}: ${item.step} ${item.unit} abziehen">−</button>
-    <input type="number" name="amount" value="${amount}" min="0" max="10000" step="1" inputmode="numeric" required aria-label="${item.name}: Tagesmenge in ${item.unit}" title="Tagesmenge eingeben und mit Enter speichern">
-    <button type="button" data-delta="+${item.step}" aria-label="${item.name}: ${item.step} ${item.unit} hinzufügen">+${item.step}</button>
+   <p class="progress-label">${displayAmount(amount,item.unit)} / ${displayAmount(item.target,item.unit)} ${actualUnit}${amount>=item.target?' · ✓':''}</p>
+   <form class="counter" data-id="${item.id}"><fieldset class="counter-fields" ${state.workoutFinished||skipped?'disabled':''}>
+    <button type="button" data-delta="-${item.step}" aria-label="${item.name}: ${step} ${actualUnit} abziehen">−</button>
+    <input type="number" name="amount" value="${amount/scale}" min="0" max="${10000/scale}" step="${1/scale}" inputmode="${scale===1?'numeric':'decimal'}" required aria-label="${item.name}: Tagesmenge in ${actualUnit}" title="Tagesmenge eingeben und mit Enter speichern">
+    <button type="button" data-delta="+${item.step}" aria-label="${item.name}: ${step} ${actualUnit} hinzufügen">+${step}</button>
     <button type="submit" class="save-amount" aria-label="${item.name}: Tagesmenge speichern">Speichern</button>
    </fieldset></form>
   </article>`;
@@ -383,7 +397,7 @@ function render() {
      <dd id="workout-total" ${state.workoutFinished?'':'hidden'}></dd>
     </div>
    </dl>
-   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
+   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':state.defaultSkip&&!state.skippedExercise?'Wähle zuerst eine Übung, die du heute streichst.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
   </article>`:'');
  updateStopwatchControls();
@@ -412,7 +426,7 @@ const scratchCards=new Map();
 
 function renderScratchTickets(){
  const owner=state.user?.id;
- const tickets=owner?state.scratchTickets??[]:[];
+ const tickets=owner?(state.scratchTickets??[]).filter(ticket=>ticket.day===state.deck.day):[];
  const list=$('#scratch-list');
  if(scratchOwner!==owner){
   scratchOwner=owner;
@@ -423,11 +437,12 @@ function renderScratchTickets(){
  const cards=tickets.map(ticket=>{
   const key=ticket.day+':'+ticket.turn;
   keys.add(key);
-  if(scratchCards.get(key)?.claimed!==ticket.claimed){
-   const label=(ticket.turn===1?'Los zum ersten Dreh':'Los zum Bonusdreh')+
-    (ticket.day===state.deck.day?'':' · '+dateFormat.format(new Date(ticket.day+'T00:00:00Z')));
+  const cached=scratchCards.get(key);
+  if(!cached || !cached.claimed&&ticket.claimed){
+   const label=ticket.turn===1?'Los zum ersten Dreh':'Los zum Bonusdreh';
    const card=createScratchTicket(ticket,label,async()=>{
     if(state.user?.id!==owner) throw new Error('Bitte melde dich erneut an.');
+    if(state.deck.day!==ticket.day) throw new Error('Dieses Los ist abgelaufen.');
     const result=await api('wheel/scratch',{day:ticket.day,turn:ticket.turn});
     if(state.user?.id===owner){
      const entry=scratchCards.get(key);
@@ -577,13 +592,15 @@ async function showMemberSummary(id,handle){
   const daily=$('#member-summary-daily');
   daily.replaceChildren();
   let reached=0;
-  for(const {name,unit,target,amount} of summary.daily){
+  let counted=0;
+  for(const {name,unit,target,amount,skipped} of summary.daily){
    const item=document.createElement('li');
    const label=document.createElement('span');
    const value=document.createElement('strong');
    label.textContent=name;
-   value.textContent=amount+' / '+target+' '+unit;
-   if(amount>=target){
+   value.textContent=skipped?'Gestrichen':displayAmount(amount,unit)+' / '+displayAmount(target,unit)+' '+displayUnit(unit);
+   if(!skipped) counted++;
+   if(!skipped&&amount>=target){
     reached++;
     value.classList.add('member-goal-reached');
     value.append(' ✓');
@@ -591,7 +608,7 @@ async function showMemberSummary(id,handle){
    item.append(label,value);
    daily.append(item);
   }
-  const status=[reached+' / '+summary.daily.length+' Tagesziele erreicht'];
+  const status=[reached+' / '+counted+' Tagesziele erreicht'];
   if(summary.rest) status.push('Freier Tag');
   if(summary.workoutFinished) status.push('Workout abgeschlossen');
   $('#member-summary-progress').textContent=status.join(' · ');
@@ -688,6 +705,7 @@ async function refresh() {
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
  syncPortraits();
  renderScratchTickets();
+ syncFoodPolls();
  if(signedIn) render();
  else{
   renderCoins();
@@ -735,7 +753,7 @@ function updateQuantityCard(form,card,amount){
  const tile=form.closest('.card');
  tile.querySelector('.points').textContent=estimatedPoints(card,amount)+' P';
  tile.querySelector('progress').value=Math.min(amount,card.target);
- tile.querySelector('.progress-label').textContent=amount+' / '+card.target+' '+card.unit+(amount>=card.target?' · ✓':'');
+ tile.querySelector('.progress-label').textContent=displayAmount(amount,card.unit)+' / '+displayAmount(card.target,card.unit)+' '+displayUnit(card.unit)+(amount>=card.target?' · ✓':'');
  renderDaySummary(visibleAmounts());
 }
 
@@ -791,21 +809,35 @@ function saveAmount(form, delta) {
  if(busy || state.workoutFinished) return;
  const field=form.elements.amount;
  if(!form.reportValidity()) return;
- const amount=Math.min(10000,Math.max(0,Number(field.value)+delta));
  const id=form.dataset.id;
+ if(id===(state.skippedExercise||state.defaultSkip)) return;
  const card=state.deck.daily.find(item=>item.id===id);
+ const scale=amountScale(card.unit);
+ const amount=Math.min(10000,Math.max(0,Math.round(field.valueAsNumber*scale)+delta));
  if(cloudUrl && state.user.admin && amount>=card.target) prepareTrainingAudio();
  const key=state.user.id+':'+state.deck.day+':'+id;
  const entry=quantityQueue.get(key)||{id,day:state.deck.day,owner:state.user.id,saving:false};
  entry.amount=amount;
  quantityQueue.set(key,entry);
- field.value=amount;
- field.defaultValue=amount;
+ field.value=amount/scale;
+ field.defaultValue=amount/scale;
  updateQuantityCard(form,card,amount);
  setError('#notice');
  clearTimeout(entry.timer);
  entry.timer=setTimeout(()=>flushQuantity(key,entry),180);
 }
+
+$('#skip-exercise').addEventListener('change',async event=>{
+ const select=event.currentTarget;
+ if(!state?.user || busy || state.workoutFinished || !select.value){
+  select.value=state?.skippedExercise||'';
+  return;
+ }
+ select.disabled=true;
+ await change('workout/skip',{day:state.deck.day,exercise:select.value},'#skip-exercise');
+ select.value=state.skippedExercise||'';
+ select.disabled=Boolean(state.workoutFinished);
+});
 
 $('#daily').addEventListener('click',event=>{
  const stopwatchButton=event.target.closest('[data-stopwatch]');
@@ -814,7 +846,7 @@ $('#daily').addEventListener('click',event=>{
   return;
  }
  if(event.target.closest('#workout-finish')){
-  if(!busy && !quantityQueue.size && !state.workoutFinished){
+  if(!busy && !quantityQueue.size && !state.workoutFinished && (!state.defaultSkip||state.skippedExercise)){
    setError('#workout-photo-status');
    $('#workout-photo').showModal();
   }
@@ -861,7 +893,7 @@ $('#wheel-action').addEventListener('click',async event=>{
  } finally {
   const pending=state.spins.some(card=>card.reward!==null && !card.completed);
   button.removeAttribute('aria-busy');
-  const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:state.activeDays.includes(state.deck.day);
+  const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:(!state.defaultSkip||state.skippedExercise)&&state.activeDays.includes(state.deck.day);
   button.disabled=!pending && !unlocked;
   busy=false;
  }
@@ -1383,7 +1415,7 @@ function showChallengeRates(){
  }
  const card={target,goalPoints};
  const [normal,bonus]=rates(card);
- const unit=fields.unit.value==='Sek.'?'Sekunde':'Wiederholung';
+ const unit={m:'Kilometer','Sek.':'Sekunde'}[fields.unit.value]??'Wiederholung';
  $('#challenge-rate').textContent=normal+' Punkte pro '+unit+' · '+bonus+' Bonus-Punkte pro '+unit+' · maximal '+estimatedPoints(card,target*2)+' Punkte';
 }
 function showWeeklyPoints(){
@@ -1498,10 +1530,19 @@ const photoDialog=$('#workout-photo');
 const photoForm=$('#workout-photo-form');
 const noPhoto=photoForm.elements.confirmNoPhoto;
 const photoSubmit=$('#workout-photo-submit');
+const photoInputs=[photoForm.elements.photo,photoForm.elements.camera];
+const chosenWorkoutPhoto=()=>photoInputs.find(input=>input.files.length)?.files[0];
 function syncPhotoChoice(){
- photoForm.elements.photo.disabled=noPhoto.checked;
+ for(const input of photoInputs) input.disabled=noPhoto.checked;
+ setError('#workout-photo-selection',noPhoto.checked?'':chosenWorkoutPhoto()?.name);
+ photoSubmit.disabled=!noPhoto.checked&&!chosenWorkoutPhoto();
  photoSubmit.textContent=noPhoto.checked?'Ohne Foto abschließen':'Foto hochladen und abschließen';
 }
+for(const input of photoInputs) input.addEventListener('change',()=>{
+ if(input.files.length) for(const other of photoInputs) if(other!==input) other.value='';
+ syncPhotoChoice();
+});
+syncPhotoChoice();
 noPhoto.addEventListener('change',syncPhotoChoice);
 photoDialog.addEventListener('close',()=>{
  photoForm.reset();
@@ -1513,7 +1554,7 @@ photoForm.addEventListener('submit',async event=>{
  event.preventDefault();
  if(busy || !state?.user || state.workoutFinished || quantityQueue.size) return;
  const confirmNoPhoto=noPhoto.checked;
- const file=photoForm.elements.photo.files[0];
+ const file=chosenWorkoutPhoto();
  if(!confirmNoPhoto && !file) return;
  busy=true;
  photoSubmit.disabled=true;
@@ -1535,8 +1576,8 @@ photoForm.addEventListener('submit',async event=>{
  }catch(error){
   setError('#workout-photo-status',error.message);
  }finally{
-  photoSubmit.disabled=false;
   noPhoto.disabled=false;
+  syncPhotoChoice();
   busy=false;
  }
 });
@@ -1551,6 +1592,136 @@ const photoPreview=$('#photo-preview');
 const previewImage=$('#photo-preview-image');
 let galleryKey;
 let galleryPhotos;
+
+const foodPanel=$('#food-polls-panel');
+const foodForm=$('#food-poll-form');
+const foodList=$('#food-poll-list');
+let foodPollOwner;
+let pollDraft;
+let foodPollLoad=0;
+
+function syncFoodPolls(){
+ const owner=cloudUrl?state.user?.id:undefined;
+ $('#food-polls-link').hidden=$('#fettstrafe').hidden=!owner;
+ if(foodPollOwner!==owner){
+  foodPollOwner=owner;
+  foodPollLoad++;
+  foodList.replaceChildren();
+  foodForm.reset();
+  pollDraft=undefined;
+  setError('#food-poll-status');
+ }
+ if(!owner) return;
+ const target=foodForm.elements.target;
+ const selected=target.value;
+ setOptions(target,[['','Bitte auswählen'],...(state.coins?.friends??[]).map(member=>[member.id,member.handle])]);
+ target.value=Array.from(target.options).some(option=>option.value===selected)?selected:'';
+ if(foodPanel.open) loadFoodPolls();
+}
+
+async function loadFoodPolls(){
+ const owner=foodPollOwner;
+ if(!owner) return;
+ const request=++foodPollLoad;
+ try{
+  const polls=await api('food-polls');
+  if(request!==foodPollLoad||owner!==foodPollOwner) return;
+  const list=document.createDocumentFragment();
+  for(const poll of polls){
+   const row=document.createElement('article');
+   row.className='food-poll';
+   const title=document.createElement('h3');
+   title.textContent=poll.targetName;
+   const result=document.createElement('p');
+   const decision=poll.verdict===true?'Schuldig · −30 P':poll.verdict===false?'Abgelehnt':poll.expired?'Abgelaufen · kein Abzug':'Offen';
+   result.textContent=decision+' · '+poll.yes+' schuldig, '+poll.no+' nicht schuldig · Mehrheit ab '+poll.majority;
+   const meta=document.createElement('p');
+   meta.textContent='Gemeldet von '+poll.reporterName+' · '+dateFormat.format(new Date(poll.createdAt));
+   row.append(title,meta,result);
+   const actions=document.createElement('div');
+   actions.className='food-poll-actions';
+   if(poll.hasPhoto){
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='outline';
+    button.textContent='Beweisfoto ansehen';
+    button.addEventListener('click',async()=>{
+     button.disabled=true;
+     try{
+      const {photo}=await api('food-polls/'+poll.id+'/photo');
+      if(!button.isConnected || foodPollOwner!==owner || photoPreview.open) return;
+      const bytes=Uint8Array.from(atob(photo),letter=>letter.charCodeAt(0));
+      const url=URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
+      $('#photo-preview-title').textContent='Beweisfoto · '+poll.targetName;
+      previewImage.src=url;
+      photoPreview.addEventListener('close',()=>URL.revokeObjectURL(url),{once:true});
+      photoPreview.showModal();
+     }catch(error){setError('#food-poll-status',error.message);}
+     finally{button.disabled=false;}
+    });
+    actions.append(button);
+   }
+   if(poll.verdict===null&&!poll.expired&&poll.canVote){
+    for(const guilty of [true,false]){
+     const button=document.createElement('button');
+     button.type='button';
+     button.className='outline';
+     button.textContent=guilty?'Schuldig':'Nicht schuldig';
+     button.addEventListener('click',async()=>{
+      if(busy||foodPollOwner!==owner) return;
+      busy=true;
+      setError('#food-poll-status');
+      try{
+       await api('food-polls/vote',{id:poll.id,guilty});
+       await refresh();
+      }catch(error){setError('#food-poll-status',error.message);}
+      finally{busy=false;}
+     });
+     actions.append(button);
+    }
+   }else if(poll.myVote!==null){
+    const ownVote=document.createElement('p');
+    ownVote.textContent='Deine Stimme · '+(poll.myVote?'Schuldig':'Nicht schuldig');
+    row.append(ownVote);
+   }
+   row.append(actions);
+   list.append(row);
+  }
+  if(!polls.length){
+   const empty=document.createElement('p');
+   empty.textContent='Hier gibt es noch keine Abstimmungen.';
+   list.append(empty);
+  }
+  foodList.replaceChildren(list);
+ }catch(error){
+  if(request===foodPollLoad && owner===foodPollOwner) setError('#food-poll-status',error.message);
+ }
+}
+
+foodPanel.addEventListener('toggle',()=>{if(foodPanel.open) loadFoodPolls();});
+$('#food-polls-link').addEventListener('click',()=>{foodPanel.open=true;});
+foodForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ const target=foodForm.elements.target.value;
+ const file=foodForm.elements.photo.files[0];
+ const owner=foodPollOwner;
+ if(!owner||busy||!target||!file) return;
+ if(pollDraft?.target!==target||pollDraft.file!==file) pollDraft={target,file,id:crypto.randomUUID()};
+ const button=foodForm.querySelector('button');
+ button.disabled=true;
+ busy=true;
+ setError('#food-poll-status','Beweisfoto wird vorbereitet …');
+ try{
+  const {makeWorkoutPhoto}=await import('./season-media.mjs');
+  const photo=await makeWorkoutPhoto(file);
+  await api('food-polls',{id:pollDraft.id,target,photo});
+  foodForm.reset();
+  pollDraft=undefined;
+  setError('#food-poll-status','Abstimmung gestartet.');
+  await loadFoodPolls();
+ }catch(error){setError('#food-poll-status',error.message);}
+ finally{busy=false;button.disabled=false;}
+});
 let galleryVisible=false;
 let galleryPaused=false;
 let galleryIndex=0;

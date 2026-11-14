@@ -12,6 +12,7 @@ const digest = (value: string) => createHash("sha256").update(value).digest();
 const loginAddress = (handle: string) => digest(handle.toLowerCase()).toString("hex").slice(0, 48) + "@bootcamp.invalid";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const audioTypes = ["audio/webm", "audio/ogg", "audio/mp4"];
+const isoDay = /^\d{4}-\d{2}-\d{2}$/;
 const voiceFiles = admin.storage.from("bootcamp-voice");
 const workoutFiles = admin.storage.from("bootcamp-workouts");
 const seasonDate = /^\d{4}-(01|03|05|07|09|11)-01$/;
@@ -30,6 +31,15 @@ function json(data: unknown, status = 200) {
 
 function sessionResponse(session: { access_token: string; refresh_token: string; expires_at?: number }) {
   return json({ access_token: session.access_token, refresh_token: session.refresh_token, expires_at: session.expires_at });
+}
+
+function jpegBytes(value: unknown): Uint8Array | null {
+  if (typeof value !== "string" || value.length > 213336 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) return null;
+  try {
+    const photo = Uint8Array.from(atob(value), byte => byte.charCodeAt(0));
+    return photo.length <= 160000 && photo[0] === 255 && photo[1] === 216 && photo[2] === 255
+      && photo.at(-2) === 255 && photo.at(-1) === 217 ? photo : null;
+  } catch { return null; }
 }
 
 async function rpc(name: string, args: Record<string, unknown>) {
@@ -95,6 +105,17 @@ Deno.serve(async (request) => {
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc("bootcamp_training_state", { p_user: data.user.id });
     }
+    const pollPhoto = path?.match(/^\/food-polls\/([^/]+)\/photo$/)?.[1];
+    if ((path === "/food-polls" || pollPhoto) && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      if (!pollPhoto) return rpc("bootcamp_food_polls", { p_user: data.user.id });
+      if (!uuid.test(pollPhoto)) return json({ error: "Foto nicht gefunden." }, 404);
+      const photo = await admin.rpc("bootcamp_food_photo", { p_user: data.user.id, p_id: pollPhoto });
+      if (photo.error || !photo.data) return json({ error: "Foto nicht gefunden." }, 404);
+      return json({ photo: photo.data.replace(/\s/g, "") });
+    }
     const member = path?.startsWith("/members/") ? path.slice("/members/".length) : null;
     if (member !== null && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);
@@ -148,7 +169,7 @@ Deno.serve(async (request) => {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > (path === "/coins/buy" ? 810000 : path === "/workout/finish" ? 220000 : 4096)) {
+      if (size > (path === "/coins/buy" ? 810000 : path === "/workout/finish" || path === "/food-polls" ? 220000 : 4096)) {
         await reader.cancel();
         return json({ error: "Anfrage zu groß." }, 413);
       }
@@ -195,10 +216,24 @@ Deno.serve(async (request) => {
     }
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
-      "/wheel/spin", "/wheel/complete", "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/wheel/spin", "/wheel/complete", "/wheel/scratch", "/workout/skip", "/food-polls", "/food-polls/vote",
+      "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+    if (path === "/workout/skip" && typeof input.day === "string" && isoDay.test(input.day) && typeof input.exercise === "string") {
+      return rpc("bootcamp_choose_skip", { p_user: data.user.id, p_day: input.day, p_exercise: input.exercise });
+    }
+    if (path === "/food-polls") {
+      if (typeof input.id !== "string" || !uuid.test(input.id) || typeof input.target !== "string" || !uuid.test(input.target)) {
+        return json({ error: "Wähle ein Gruppenmitglied." }, 400);
+      }
+      if (!jpegBytes(input.photo)) return json({ error: "Wähle ein gültiges Beweisfoto." }, 400);
+      return rpc("bootcamp_open_food_poll", { p_user: data.user.id, p_id: input.id, p_target: input.target, p_photo: input.photo });
+    }
+    if (path === "/food-polls/vote" && typeof input.id === "string" && uuid.test(input.id) && typeof input.guilty === "boolean") {
+      return rpc("bootcamp_vote_food_poll", { p_user: data.user.id, p_id: input.id, p_guilty: input.guilty });
+    }
     if (path === "/admin/media/delete") {
       if (typeof input.backupId !== "string" || !uuid.test(input.backupId)
         || !["photos", "voice", "all"].includes(input.kind) || input.confirm !== true) {
@@ -221,19 +256,12 @@ Deno.serve(async (request) => {
       return json({ more: files.length > 60 });
     }
     if (path === "/workout/finish" && typeof input.day === "string") {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day)) return json({ error: "Ungültiges Workout-Datum." }, 400);
+      if (!isoDay.test(input.day)) return json({ error: "Ungültiges Workout-Datum." }, 400);
       if (input.confirmNoPhoto === true && input.photo === undefined) {
         return rpc("bootcamp_finish_without_photo", { p_user: data.user.id, p_day: input.day });
       }
-      if (typeof input.photo !== "string"
-        || input.photo.length > 213336 || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.photo)) {
-        return json({ error: "Wähle ein Foto oder bestätige den Abschluss ohne Foto." }, 400);
-      }
-      let photo: Uint8Array;
-      try { photo = Uint8Array.from(atob(input.photo), byte => byte.charCodeAt(0)); }
-      catch { return json({ error: "Das Foto ist ungültig." }, 400); }
-      if (photo.length > 160000 || photo[0] !== 255 || photo[1] !== 216 || photo[2] !== 255
-        || photo.at(-2) !== 255 || photo.at(-1) !== 217) {
+      const photo = jpegBytes(input.photo);
+      if (!photo) {
         return json({ error: "Das Foto muss ein JPEG mit maximal 160 KB sein." }, 400);
       }
       const objectPath = data.user.id + "/" + input.day + "-" + crypto.randomUUID() + ".jpg";

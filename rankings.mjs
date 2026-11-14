@@ -23,7 +23,8 @@ export function setupRankings(db,{legacyCount,monthTarget,monthBonus,rewardsStar
   WITH completed AS (
    SELECT q.user_id,q.day FROM effective_quantities q
    LEFT JOIN challenge_periods p ON p.period=q.day AND p.kind='daily'
-   WHERE q.reached=1 GROUP BY q.user_id,q.day HAVING COUNT(*)=COALESCE(json_array_length(p.data),?)
+   WHERE q.reached=1 GROUP BY q.user_id,q.day
+   HAVING COUNT(*)=COALESCE(json_array_length(p.data),?)-EXISTS(SELECT 1 FROM json_each(p.data) WHERE value->>'id'='jogging' AND json_array_length(p.data)>1)
   ), numbered AS (
    SELECT user_id,day,ROW_NUMBER() OVER(PARTITION BY user_id,substr(day,1,7) ORDER BY day) AS number FROM completed
   )

@@ -5,6 +5,7 @@ export const daily = [
  {id:'situp', icon:'situp', name:'Bauchaufzüge', target:15, unit:'Wdh.', step:1, color:'orange', hint:'Auch als Crunches'},
  {id:'squat', icon:'squat', name:'Kniebeugen', target:15, unit:'Wdh.', step:1, color:'lime', hint:'Mit Körpergewicht'}
 ];
+export const jogging={id:'jogging',icon:'jogging',name:'Joggen',target:5000,unit:'m',step:1000,goalPoints:60,color:'pink',hint:''};
 
 export const pools = [
  [['run','↗','Raus an die Luft','20 Minuten locker joggen oder zügig gehen',30,'pink'],['stairs','↟','Treppen statt Aufzug','10 Minuten Treppensteigen oder bergauf gehen',30,'pink'],['walk','◎','Umweg erwünscht','Gehe 30 Minuten auf einer neuen Route spazieren',30,'pink'],['cycle','↗','Kleine Radtour','Fahre 20 Minuten mit dem Rad',30,'pink']],
@@ -16,6 +17,11 @@ export const monthBonus = 100;
 export { wheel } from './supabase/functions/_shared/wheel.mjs';
 export function exercisePoints(exercise, quantity) {
  const {target,step}=exercise;
+ if(exercise.goalPoints){
+  const base=Math.floor(Math.min(quantity,target)*exercise.goalPoints/target);
+  const bonus=Math.floor(Math.min(Math.max(quantity-target,0),target)*exercise.goalPoints/(4*target));
+  return Math.min(75,base+bonus);
+ }
  const base=Math.floor(Math.min(quantity,target)/step);
  const extra=Math.min(Math.max(quantity-target,0),target);
  const bonus=Math.min(Math.floor(extra/(4*step)),Math.floor(base/4));

@@ -1,5 +1,5 @@
 import {randomInt,randomUUID} from 'node:crypto';
-import {daily,pools,schedule} from './deck.mjs';
+import {daily,jogging,pools,schedule} from './deck.mjs';
 
 const extra = [
  ['Bewegung',30,[
@@ -71,7 +71,10 @@ export function setupChallenges(db,fail){
   CREATE TABLE IF NOT EXISTS challenge_periods(period TEXT NOT NULL,kind TEXT NOT NULL,data TEXT NOT NULL,PRIMARY KEY(period,kind));
  `);
  const insert=db.prepare('INSERT OR IGNORE INTO challenge_catalog VALUES(?,?,1,?)');
- for(const item of daily) insert.run(item.id,'daily',JSON.stringify(item));
+ for(const item of [...daily,jogging]) insert.run(item.id,'daily',JSON.stringify(item));
+ db.prepare(`UPDATE challenge_periods SET data=json_insert(data,'$[#]',json((SELECT data FROM challenge_catalog WHERE id='jogging')))
+  WHERE period=? AND kind='daily' AND EXISTS(SELECT 1 FROM challenge_catalog WHERE id='jogging' AND enabled)
+  AND NOT EXISTS(SELECT 1 FROM json_each(data) WHERE value->>'id'='jogging')`).run(schedule().day);
  for(const [id,,name,hint,,,category] of weeklyDefaults){
   const difficulty=category==='Ernährung'?'Leicht':'Mittel';
   insert.run(id,'weekly',JSON.stringify({id,name,hint,points:weeklyPoints[difficulty],category,difficulty}));
@@ -131,8 +134,10 @@ export function setupChallenges(db,fail){
   const item={id:id||randomUUID(),name,hint};
   if(kind==='daily'){
    const {target,step,unit}=input;
-   if(!Number.isInteger(target)||target<1||target>10000||!Number.isInteger(step)||step<1||step>target||!['Wdh.','Sek.'].includes(unit)) fail(400,'Prüfe Zielmenge, Einheit und Menge pro Punkt.');
-   Object.assign(item,{target,step,unit,icon:existing?.icon||'squat',color:existing?.color||'lime'});
+   if(!Number.isInteger(target)||target<1||target>10000||!Number.isInteger(step)||step<1||step>target||!['Wdh.','Sek.','m'].includes(unit)) fail(400,'Prüfe Zielmenge, Einheit und Menge pro Punkt.');
+   const goalPoints=input.goalPoints??60;
+   if(!Number.isInteger(goalPoints)||goalPoints<1||goalPoints>75) fail(400,'Zielpunkte müssen zwischen 1 und 75 liegen.');
+   Object.assign(item,{target,step,unit,goalPoints,icon:existing?.icon||'squat',color:existing?.color||'lime'});
    if(!enabled&&!entries.some(row=>row.kind===kind&&row.enabled&&row.id!==id)) fail(400,'Mindestens eine Tagesübung muss aktiv bleiben.');
   } else {
    const {category,difficulty}=input;
