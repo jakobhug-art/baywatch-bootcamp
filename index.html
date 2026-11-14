@@ -71,8 +71,8 @@
      <p>Ein Dreh kann dir <strong>25 Punkte bringen</strong> oder <strong>bis zu 30 kosten</strong>. Extra-Aufgaben kannst du bis Mitternacht abhaken. Die Extrarunde gibt dir 5 Punkte und kann einen zweiten Dreh freischalten.</p>
      <p class="wheel-jackpot"><span class="coin-icon" aria-hidden="true"></span> Goldfeld: 15 Münzen · 1 % Chance</p>
      <p id="wheel-lock">Schließe zuerst dein Workout ab.</p>
-     <div id="wheel-result" role="status" hidden></div>
-     <button class="primary" type="button" id="wheel-action">Rad drehen</button>
+     <div id="wheel-result" class="wheel-result" role="status" hidden></div>
+     <button class="primary" type="button" id="wheel-open" aria-haspopup="dialog">Glücksrad öffnen</button>
     </div>
    </div>
    <div class="panel scratch-area" id="scratch-area" hidden>
@@ -294,7 +294,29 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.33</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.34</small></footer>
+ <dialog id="wheel-dialog" aria-labelledby="wheel-dialog-title">
+  <div class="dialog-heading">
+   <h2 id="wheel-dialog-title">Glücks- &amp; Pechrad</h2>
+   <button class="outline" id="wheel-close" type="button" aria-label="Glücksrad schließen">✕</button>
+  </div>
+  <div class="wheel-frame wheel-frame-large" aria-hidden="true">
+   <span class="wheel-pointer">▼</span>
+   <div class="wheel-disc" id="wheel-large-disc"><span class="wheel-hub">✦</span></div>
+  </div>
+  <p class="wheel-jackpot wheel-legend"><span class="coin-icon" aria-hidden="true"></span> Schmales Goldfeld · 15 Münzen · 1 % Chance</p>
+  <div class="wheel-dialog-controls">
+   <p id="wheel-dialog-lock" hidden>Schließe zuerst dein Workout ab.</p>
+   <div id="wheel-dialog-result" class="wheel-result" role="status" tabindex="-1" hidden></div>
+   <p id="wheel-dialog-error" role="alert" hidden></p>
+   <button class="primary" id="wheel-action" type="button">Rad drehen</button>
+   <button class="outline" id="wheel-scratch-link" type="button" hidden>Zum Rubbellos</button>
+  </div>
+  <details class="wheel-field-list">
+   <summary>Alle Felder im Überblick</summary>
+   <ul id="wheel-fields"></ul>
+  </details>
+ </dialog>
  <dialog id="skip-dialog" aria-labelledby="skip-dialog-title" aria-describedby="skip-dialog-info">
   <h2 id="skip-dialog-title"></h2>
   <p id="skip-dialog-info">Die Übung fällt für heute aus. Bereits eingetragene Leistungen dafür zählen heute nicht. Deine Wahl gilt bis Mitternacht.</p>

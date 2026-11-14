@@ -419,7 +419,35 @@ function render() {
 }
 
 const signed = points => points>0?'+'+points:points<0?'−'+Math.abs(points):'0';
-let animateSpin=false;
+const wheelDialog=$('#wheel-dialog');
+const largeWheel=$('#wheel-large-disc');
+const wheelAction=$('#wheel-action');
+const wheelFields=[
+ ['+25 Punkte'],['+10 Punkte'],['−25 Punkte'],['−10 Punkte'],
+ ['30 Liegestütze','oder −30 P'],['1 Min. Plank','für +10 P'],['6 Klimmzüge','für +15 P'],
+ ['+5 Punkte','Extrarunde'],['Freier Tag','Gutschein'],['Nibbler ♥','Hugo & Joni'],['15 Münzen','Goldfeld · 1 %']
+];
+const wheelLabels=wheelFields.map(([title,detail],slot)=>{
+ const label=document.createElement('span');
+ const gold=slot===wheelFields.length-1;
+ label.className=gold?'wheel-field wheel-field-gold':'wheel-field';
+ label.textContent=gold?'15':title;
+ if(detail&&!gold){
+  const sublabel=document.createElement('small');
+  sublabel.textContent=detail;
+  label.append(sublabel);
+ }
+ label.style.setProperty('--field-angle',wheelAngle({slot})-90+'deg');
+ largeWheel.append(label);
+ return label;
+});
+for(const field of wheelFields){
+ const item=document.createElement('li');
+ item.textContent=field.join(' · ');
+ $('#wheel-fields').append(item);
+}
+let wheelUnlocked=false;
+let wheelInMotion=false;
 let scratchOwner;
 const scratchCards=new Map();
 
@@ -458,25 +486,14 @@ function renderScratchTickets(){
  if(cards.length!==list.children.length || cards.some((card,index)=>card!==list.children[index])) list.replaceChildren(...cards);
 }
 
-function renderWheel(unlocked) {
- const {spins,user}=state;
- const spin=spins.at(-1);
- const disc=$('#wheel-disc');
- const result=$('#wheel-result');
- const action=$('#wheel-action');
- disc.classList.toggle('wheel-spinning',Boolean(animateSpin && spin));
- const angle=spin?.slot===10?340.38:(spin?.slot??0)*35.64;
- disc.style.setProperty('--wheel-turn',((animateSpin?1440:0)-angle)+'deg');
- animateSpin=false;
- result.hidden=!spin;
+function wheelAngle(spin){
+ return spin?.slot===10?340.38:(spin?.slot??0)*35.64;
+}
+
+function renderWheelResult(result,cards){
+ result.hidden=!cards.length;
  result.replaceChildren();
- const pending=spin && spin.reward!==null && !spin.completed;
- const bonus=spins.length===1 && spin.bonus;
- action.hidden=Boolean(spin && !pending && !bonus);
- action.disabled=Boolean(user && !unlocked && !pending);
- action.textContent=pending?'Aufgabe erledigt':bonus?'Bonusdreh nutzen':user?'Rad drehen':'Anmelden';
- $('#wheel-lock').hidden=Boolean(unlocked || pending || action.hidden);
- for(const card of spins){
+ for(const card of cards){
   const entry=document.createElement('div');
   const title=document.createElement('h3');
   title.textContent=card.title;
@@ -491,6 +508,29 @@ function renderWheel(unlocked) {
   entry.append(title,description,score);
   result.append(entry);
  }
+}
+
+function renderWheel(unlocked){
+ wheelUnlocked=unlocked;
+ if(wheelInMotion) return;
+ const {spins}=state;
+ const spin=spins.at(-1);
+ const angle=wheelAngle(spin);
+ $('#wheel-disc').style.setProperty('--wheel-turn',-angle+'deg');
+ largeWheel.style.setProperty('--wheel-turn',-angle+'deg');
+ wheelLabels.forEach((label,slot)=>{
+  const orientation=(wheelAngle({slot})-90-angle+720)%360;
+  label.style.setProperty('--field-flip',orientation>90&&orientation<270?'180deg':'0deg');
+ });
+ renderWheelResult($('#wheel-result'),spins);
+ renderWheelResult($('#wheel-dialog-result'),spin?[spin]:[]);
+ const pending=spin && spin.reward!==null && !spin.completed;
+ const bonus=spins.length===1 && spin.bonus;
+ wheelAction.hidden=Boolean(spin && !pending && !bonus);
+ wheelAction.disabled=!unlocked && !pending;
+ wheelAction.textContent=pending?'Aufgabe erledigt':bonus?'Bonusdreh nutzen':'Rad drehen';
+ $('#wheel-lock').hidden=$('#wheel-dialog-lock').hidden=Boolean(unlocked || pending || wheelAction.hidden);
+ $('#wheel-scratch-link').hidden=!(state.scratchTickets??[]).some(ticket=>ticket.day===state.deck.day&&!ticket.claimed);
 }
 
 function prankDisplayName(handle,id){
@@ -904,29 +944,59 @@ $('#account').addEventListener('click',()=>{
  if(state?.user) change('logout',{},'#account');
  else showAuth();
 });
-$('#wheel-action').addEventListener('click',async event=>{
+$('#wheel-open').addEventListener('click',()=>{
+ if(!state?.user || wheelDialog.open) return;
+ setError('#wheel-dialog-error');
+ wheelDialog.showModal();
+});
+const wheelClose=$('#wheel-close');
+wheelClose.addEventListener('click',()=>wheelDialog.close());
+wheelDialog.addEventListener('cancel',event=>{if(wheelInMotion) event.preventDefault();});
+$('#wheel-scratch-link').addEventListener('click',()=>{
+ wheelDialog.close();
+ $('#scratch-area').scrollIntoView({block:'start'});
+ $('#scratch-area button:not([hidden])')?.focus({preventScroll:true});
+});
+wheelAction.addEventListener('click',async()=>{
  if(!state?.user){showAuth();return;}
  if(busy) return;
- const button=event.currentTarget;
  const latest=state.spins.at(-1);
- const spinning=!latest || latest.reward===null;
+ const spinning=!latest || latest.reward===null || latest.completed;
  const turn=spinning?state.spins.length+1:latest.turn;
+ const day=state.deck.day;
  busy=true;
- button.disabled=true;
- button.setAttribute('aria-busy','true');
- setError('#notice');
+ wheelInMotion=spinning;
+ wheelAction.disabled=wheelClose.disabled=true;
+ wheelAction.setAttribute('aria-busy','true');
+ setError('#wheel-dialog-error');
+ if(spinning){
+  wheelAction.textContent='Rad dreht …';
+  $('#wheel-dialog-result').hidden=true;
+  $('#wheel-scratch-link').hidden=true;
+ }
  try {
-  await api(spinning?'wheel/spin':'wheel/complete',{day:state.deck.day,turn});
-  animateSpin=spinning;
+  await api(spinning?'wheel/spin':'wheel/complete',{day,turn});
   await refresh();
+  const result=state.deck?.day===day&&state.spins?.find(spin=>spin.turn===turn);
+  if(spinning && result && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+   const start=-wheelAngle(latest);
+   const end=(Math.ceil((start+wheelAngle(result))/360)+3)*360-wheelAngle(result);
+   await largeWheel.animate([
+    {transform:`rotate(${start}deg)`},{transform:`rotate(${end}deg)`}
+   ],{duration:2600,easing:'cubic-bezier(.13,.69,.18,1)'}).finished;
+  }
  } catch(error){
-  setError('#notice',error.message);
+  setError('#wheel-dialog-error',error.message);
   if(spinning) await refresh().catch(()=>{});
  } finally {
-  const pending=state.spins.some(card=>card.reward!==null && !card.completed);
-  button.removeAttribute('aria-busy');
-  const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:(!state.defaultSkip||state.skippedExercise)&&state.activeDays.includes(state.deck.day);
-  button.disabled=!pending && !unlocked;
+  wheelInMotion=false;
+  wheelClose.disabled=false;
+  wheelAction.removeAttribute('aria-busy');
+  if(state.user){
+   renderWheel(wheelUnlocked);
+   if(!$('#wheel-dialog-result').hidden) $('#wheel-dialog-result').focus({preventScroll:true});
+   else if(!wheelAction.disabled&&!wheelAction.hidden) wheelAction.focus({preventScroll:true});
+  }else wheelDialog.close();
   busy=false;
  }
 });
