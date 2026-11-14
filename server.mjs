@@ -279,10 +279,14 @@ createServer(async (req,res)=>{
    if(!user) fail(401,'Bitte melde dich an.');
    const input=await body(req);
    if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
-   if(!defaultSkip(deck) || !deck.daily.some(card=>card.id===input.exercise)) fail(400,'Wähle eine Tagesübung zum Streichen.');
-   if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
-   db.prepare('INSERT INTO daily_skips VALUES(?,?,?) ON CONFLICT(user_id,day) DO UPDATE SET exercise=excluded.exercise')
-    .run(user.id,deck.day,input.exercise);
+   coins.transaction(()=>{
+    const chosen=selectedSkip.get(user.id,deck.day);
+    if(chosen && chosen.exercise===input.exercise) return;
+    if(chosen) fail(409,'Die gestrichene Übung steht für heute bereits fest.');
+    if(!defaultSkip(deck) || !deck.daily.some(card=>card.id===input.exercise)) fail(400,'Wähle eine Tagesübung zum Streichen.');
+    if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
+    db.prepare('INSERT INTO daily_skips VALUES(?,?,?)').run(user.id,deck.day,input.exercise);
+   });
    return reply({ok:true});
   }
   if(req.method==='POST' && path==='/api/wheel/scratch'){

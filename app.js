@@ -147,7 +147,7 @@ function renderDaySummary(amounts){
  const {deck,spins,coins,photoBonus=0}=state;
  const wheelPoints=spins.reduce((sum,spin)=>sum+(spin.completed?spin.reward:spin.initial),0);
  const rest=Boolean(coins?.rest);
- const counted=deck.daily.filter(item=>item.id!==(state.skippedExercise||state.defaultSkip));
+ const counted=deck.daily.filter(item=>item.id!==state.skippedExercise);
  const points=counted.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?estimatedPoints(item,item.target):0),wheelPoints+photoBonus);
  const reached=rest?counted.length:counted.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
  $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+counted.length+' Ziele')+' · '+points+' P';
@@ -343,23 +343,21 @@ function render() {
   $('#info-weekly-points').textContent='Für neu ausgeloste Aufgaben gelten '+Leicht+' Punkte für einfach, '+Mittel+' für mittel und '+Schwer+' für schwierig.';
  }
  $('#info-month-goal').textContent='Das Monatsziel bringt '+deck.monthBonus+' Bonuspunkte für '+deck.monthTarget+' vollständige Trainingstage.';
- const skipSelect=$('#skip-exercise');
- $('#skip-choice').hidden=!state.defaultSkip;
- skipSelect.disabled=Boolean(state.workoutFinished);
- setOptions(skipSelect,[['','Übung auswählen'],...deck.daily.map(item=>[item.id,item.name])]);
- skipSelect.value=state.skippedExercise||'';
+ const skippedCard=deck.daily.find(item=>item.id===state.skippedExercise);
+ const canSkip=Boolean(state.defaultSkip&&!skippedCard&&!state.workoutFinished);
+ setError('#skip-status',skippedCard?'Heute gestrichen: '+skippedCard.name+'.':canSkip?'Streiche eine Übung direkt auf ihrer Karte. Deine Wahl gilt bis Mitternacht.':'');
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name)};
   const {amount=0,points=0} = amounts.get(item.id)||{};
   const unit=dailyTerms[item.id]||({m:'Kilometer','Sek.':'Sekunde'}[item.unit]??'Wiederholung');
   const [normal,bonus]=rates(item);
-  const skipped=item.id===(state.skippedExercise||state.defaultSkip);
+  const skipped=item.id===state.skippedExercise;
   const step=displayAmount(item.step,item.unit);
   const scale=amountScale(item.unit);
   const actualUnit=displayUnit(item.unit);
   return `<article class="card exercise-card ${item.color}${skipped?' skipped-exercise':''}">
    ${symbols}
-   <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${skipped?(state.skippedExercise?'Gestrichen':'Vorauswahl'):points+' P'}</span></div>
+   <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${skipped?'Gestrichen':points+' P'}</span></div>
    ${item.id==='plank'?`<div class="plank-heading"><h3>${item.name}</h3>${plankStopwatch}</div>`:`<h3>${item.name}</h3>`}
    <dl class="daily-rates">
     <div><dt>Punkte pro ${unit}</dt><dd>${normal}</dd></div>
@@ -373,10 +371,11 @@ function render() {
     <button type="button" data-delta="+${item.step}" aria-label="${item.name}: ${step} ${actualUnit} hinzufügen">+${step}</button>
     <button type="submit" class="save-amount" aria-label="${item.name}: Tagesmenge speichern">Speichern</button>
    </fieldset></form>
+   ${canSkip?`<button type="button" class="skip-exercise" data-skip="${item.id}" aria-label="${item.name} für heute streichen">Heute streichen</button>`:''}
   </article>`;
  }).join('')+(cloudUrl?`<article class="card workout-card" id="workout-summary">
    <h3>Workout abschließen</h3>
-   <dl class="daily-rates">
+   <dl class="daily-rates" ${canSkip?'hidden':''}>
     <div><dt>Grundpunkte</dt><dd id="workout-base"></dd></div>
     <div><dt>Bonuspunkte</dt><dd id="workout-bonus"></dd></div>
     <div>
@@ -810,7 +809,7 @@ function saveAmount(form, delta) {
  const field=form.elements.amount;
  if(!form.reportValidity()) return;
  const id=form.dataset.id;
- if(id===(state.skippedExercise||state.defaultSkip)) return;
+ if(id===state.skippedExercise) return;
  const card=state.deck.daily.find(item=>item.id===id);
  const scale=amountScale(card.unit);
  const amount=Math.min(10000,Math.max(0,Math.round(field.valueAsNumber*scale)+delta));
@@ -827,19 +826,52 @@ function saveAmount(form, delta) {
  entry.timer=setTimeout(()=>flushQuantity(key,entry),180);
 }
 
-$('#skip-exercise').addEventListener('change',async event=>{
- const select=event.currentTarget;
- if(!state?.user || busy || state.workoutFinished || !select.value){
-  select.value=state?.skippedExercise||'';
-  return;
+const skipDialog=$('#skip-dialog');
+const skipForm=$('#skip-form');
+const skipCancel=$('#skip-cancel');
+let skipDraft;
+skipCancel.addEventListener('click',()=>{if(!busy) skipDialog.close();});
+skipDialog.addEventListener('cancel',event=>{if(busy) event.preventDefault();});
+skipForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(busy || !skipDraft || skipDraft.owner!==state?.user?.id) return;
+ const {day,exercise,owner}=skipDraft;
+ if(day!==state.deck.day){skipDialog.close();return;}
+ busy=true;
+ const submit=skipForm.querySelector('[type="submit"]');
+ submit.disabled=skipCancel.disabled=true;
+ setError('#skip-error');
+ try{
+  await api('workout/skip',{day,exercise});
+  if(state.user?.id===owner && state.deck.day===day){
+   state.skippedExercise=exercise;
+   render();
+  }
+  skipDialog.close();
+  await refresh().catch(error=>setError('#notice',error.message));
+  $('#skip-status').focus({preventScroll:true});
+ }catch(error){
+  await refresh().catch(()=>{});
+  if(state.deck?.day!==day || state.skippedExercise) skipDialog.close();
+  setError(skipDialog.open?'#skip-error':'#notice',error.message);
+ }finally{
+  submit.disabled=skipCancel.disabled=false;
+  busy=false;
  }
- select.disabled=true;
- await change('workout/skip',{day:state.deck.day,exercise:select.value},'#skip-exercise');
- select.value=state.skippedExercise||'';
- select.disabled=Boolean(state.workoutFinished);
 });
 
 $('#daily').addEventListener('click',event=>{
+ const skipButton=event.target.closest('[data-skip]');
+ if(skipButton){
+  if(!state?.user || busy || state.skippedExercise || state.workoutFinished) return;
+  const exercise=state.deck.daily.find(item=>item.id===skipButton.dataset.skip);
+  if(!exercise) return;
+  skipDraft={owner:state.user.id,day:state.deck.day,exercise:exercise.id};
+  $('#skip-dialog-title').textContent=exercise.name+' für heute streichen?';
+  setError('#skip-error');
+  skipDialog.showModal();
+  return;
+ }
  const stopwatchButton=event.target.closest('[data-stopwatch]');
  if(stopwatchButton){
   if(stopwatchButton.getAttribute('aria-disabled')!=='true') changeStopwatch(stopwatchButton.dataset.stopwatch);

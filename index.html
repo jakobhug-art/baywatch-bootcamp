@@ -54,7 +54,7 @@
   <section id="heute" class="section">
    <div class="section-heading"><div><p class="eyebrow accent">TÄGLICHES TRAINING</p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
    <p class="sub">Pro Übung sind maximal 75 Punkte möglich. Je fehlendem Ziel werden beim Abschluss oder am Tagesende 10 Punkte abgezogen.</p>
-   <label class="skip-choice" id="skip-choice" hidden>Heute streichen <select id="skip-exercise" aria-label="Eine Übung für heute streichen"></select></label>
+   <p class="skip-status" id="skip-status" role="status" tabindex="-1" hidden></p>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
    <div id="daily-extra-card" class="panel" hidden></div>
@@ -159,7 +159,7 @@
    <h2 id="info-heading">So funktioniert die App</h2>
    <details class="panel info-card" open>
     <summary>Training, Punkte und Workout-Abschluss</summary>
-    <p>Streiche jeden Tag eine Übung. Nur die übrigen Übungen zählen für Punkte, Abzüge und das Monatsziel. Ohne Auswahl bleibt beim Tageswechsel Joggen gestrichen, sofern es im Tagesplan steht. Das Laufziel liegt bei 5 km für 60 Grundpunkte.</p>
+    <p>Streiche jeden Tag eine Übung direkt auf ihrer Karte. Nach der Bestätigung steht deine Wahl bis zum Tageswechsel fest. Nur die übrigen Übungen zählen für Punkte, Abzüge und das Monatsziel. Ohne Auswahl wird am Tagesende Joggen gestrichen, sofern es im Tagesplan steht. Das Laufziel liegt bei 5 km für 60 Grundpunkte.</p>
     <p>Trag Wiederholungen, Sekunden oder Kilometer ein. Du kannst die Plus- und Minus-Tasten nutzen oder die Zahl direkt eingeben und speichern.</p>
     <p>Bis zum Soll sammelst du Grundpunkte. Alles darüber zählt mit einem Viertel des normalen Satzes. Der Bonus endet beim doppelten Soll oder bei 75 Punkten pro Übung. Grund- und Bonuspunkte werden getrennt auf ganze Punkte abgerundet.</p>
     <p>Unter „Workout abschließen“ siehst du deine Punkte und Abzüge. Je fehlendem Ziel gehen 10 Punkte ab, entweder beim Abschluss oder um Mitternacht. Ein Foto bringt beim Abschluss 10 Punkte extra. Wenn du den Abschluss ohne Foto per Haken bestätigst, werden 20 Punkte abgezogen. In beiden Fällen wird das Glücksrad freigeschaltet.</p>
@@ -294,7 +294,16 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.32</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.33</small></footer>
+ <dialog id="skip-dialog" aria-labelledby="skip-dialog-title" aria-describedby="skip-dialog-info">
+  <h2 id="skip-dialog-title"></h2>
+  <p id="skip-dialog-info">Die Übung fällt für heute aus. Bereits eingetragene Leistungen dafür zählen heute nicht. Deine Wahl gilt bis Mitternacht.</p>
+  <form id="skip-form" class="skip-actions">
+   <button class="outline" type="button" id="skip-cancel" autofocus>Abbrechen</button>
+   <button class="primary" type="submit">Endgültig streichen</button>
+  </form>
+  <p id="skip-error" role="status" hidden></p>
+ </dialog>
  <dialog id="workout-photo" aria-labelledby="workout-photo-title">
   <div class="dialog-heading">
    <h2 id="workout-photo-title">Workout abschließen</h2>

@@ -267,8 +267,12 @@ form .challenge-enabled input{width:auto}
 .workout-total{margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
 .workout-total dt,.workout-total dd{color:var(--tone);font-weight:700}
 .daily:has(.workout-card){grid-template-columns:repeat(3,minmax(0,1fr))}
-.skip-choice{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:14px;font-weight:700}
-.skip-choice select,.photo-form select{min-width:0;max-width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#20202c;color:var(--text);font:inherit}
+.skip-status{margin:0 0 14px;color:var(--muted)}
+.skip-exercise{align-self:flex-start;padding:2px 0;border:0;background:transparent;color:var(--muted);font-size:13px;text-align:left}
+.skip-exercise:hover{color:var(--tone);text-decoration:underline}
+.skip-actions{display:flex;flex-wrap:wrap;gap:8px}
+#skip-error{color:var(--pink)}
+.photo-form select{min-width:0;max-width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#20202c;color:var(--text);font:inherit}
 .skipped-exercise{border-top-color:var(--line)}
 .skipped-exercise .points{color:var(--muted)}
 .photo-source{position:relative;display:block;overflow:hidden;cursor:pointer}
