@@ -15,7 +15,7 @@
   <nav aria-label="Hauptnavigation" data-member hidden>
    <a href="#start" data-nav-view="heute">Startseite</a>
    <a href="#muenzen" data-nav-view="muenzen">Münzen &amp; Pranks</a>
-   <button id="chat-open" type="button" aria-haspopup="dialog" hidden>Chat</button>
+   <button id="chat-open" data-chat-open type="button" aria-haspopup="dialog" hidden>Chat</button>
    <details class="more-nav" id="more-nav">
     <summary>Mehr <span aria-hidden="true">⌄</span></summary>
     <div class="more-links">
@@ -75,6 +75,15 @@
    <p id="gallery-status" role="status"></p>
    <div class="gallery-grid" id="gallery-grid"></div>
   </section>
+  <aside class="home-news" aria-labelledby="home-news-title">
+   <h2 id="home-news-title">Neuigkeiten</h2>
+   <ul>
+    <li><button class="news-link" data-chat-open type="button" aria-haspopup="dialog" hidden>Gruppenchat</button> Direkt in der App schreiben.</li>
+    <li><a class="news-link" href="#rangliste">Season-Neustart</a> Punkte und Münzen seit 16.11. neu.</li>
+    <li><a class="news-link" href="#feedback">Bugs &amp; Ideen</a> Melden und vorschlagen.</li>
+    <li><a class="news-link" href="#gluecksrad">Glücksrad</a> Drehen und Rubbellos holen.</li>
+   </ul>
+  </aside>
   <section id="heute" class="section">
    <div class="today-heading"><div><p class="eyebrow accent" id="date"></p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
    <p class="skip-status" id="skip-status" role="status" tabindex="-1" hidden></p>
@@ -328,7 +337,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.38</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.39</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>

@@ -1,7 +1,7 @@
 const chatDate=new Intl.DateTimeFormat('de-DE',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Berlin'});
 
 export function setupGroupChat(api){
- const open=document.querySelector('#chat-open');
+ const openers=document.querySelectorAll('[data-chat-open]');
  const dialog=document.querySelector('#chat-dialog');
  const pinned=dialog.querySelector('.chat-pinned');
  const thread=dialog.querySelector('.chat-thread');
@@ -104,14 +104,15 @@ export function setupGroupChat(api){
   }finally{if(request===loadNumber) more.disabled=false;}
  }
 
- open.addEventListener('click',()=>{
+ function openChat(){
   if(!account||dialog.open) return;
   showStatus();
   dialog.showModal();
   load({bottom:true});
   clearInterval(timer);
   timer=setInterval(()=>{if(!document.hidden&&!writing&&!more.disabled) load({quiet:true});},8000);
- });
+ }
+ for(const opener of openers) opener.addEventListener('click',openChat);
  dialog.querySelector('#chat-close').addEventListener('click',()=>dialog.close());
  dialog.addEventListener('close',()=>{if(!dialog.open) clearInterval(timer);});
  more.addEventListener('click',()=>load({older:true}));
@@ -136,7 +137,7 @@ export function setupGroupChat(api){
  });
 
  return user=>{
-  open.hidden=!user;
+  for(const opener of openers) opener.hidden=!user;
   if(user?.id!==account?.id){
    if(dialog.open) dialog.close();
    loadNumber++;
