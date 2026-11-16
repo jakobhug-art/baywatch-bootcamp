@@ -2,6 +2,7 @@ export function setupInstallableApp(hasPendingChanges){
  const query=new URLSearchParams(location.search);
  const installed=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true||query.get('app')==='1';
  const preview=query.get('install')==='1';
+ document.querySelector('#install-nav').hidden=installed;
  if(!installed&&!preview) return;
 
  const manifest=document.createElement('link');
