@@ -24,6 +24,9 @@ const dateFormat = new Intl.DateTimeFormat('de-DE',{weekday:'long',day:'numeric'
 const monthFormat = new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric',timeZone:'UTC'});
 let state;
 let rankingPeriod = 'seasonRanking';
+let rankingSnapshot;
+let rankingSignature;
+let rankingPending=false;
 let register = false;
 let busy = false;
 const quantityQueue = new Map();
@@ -208,7 +211,14 @@ function showView(){
  currentAnchor=anchor;
 }
 
-window.addEventListener('hashchange',()=>{moreNav.open=false;showView();syncPortraits();syncProfile();});
+window.addEventListener('hashchange',()=>{
+ const previousView=currentView;
+ moreNav.open=false;
+ showView();
+ syncPortraits();
+ syncProfile();
+ if(currentView==='heute'&&(previousView!==currentView||currentAnchor==='rangliste')) refreshVisibleSocial();
+});
 moreNav.addEventListener('click',event=>{if(event.target.closest('a')) moreNav.open=false;});
 document.addEventListener('click',event=>{if(moreNav.open&&!moreNav.contains(event.target)) moreNav.open=false;});
 moreNav.addEventListener('keydown',event=>{
@@ -310,15 +320,16 @@ async function api(path, payload) {
    trainingAudioQueue=Promise.resolve();
    return {ok:true};
   }
-  if(path==='state'){
+  if(path==='state'||path==='state?birthdays=0'){
+   const route=path==='state'?'state?birthdays=1':path;
    const token=cloudSession?.access_token;
-   try{return await cloudRequest('state?birthdays=1',undefined,token);}
+   try{return await cloudRequest(route,undefined,token);}
    catch(error){
     if(error.status!==401 || !token) throw error;
     await refreshCloudSession(token);
     const renewed=cloudSession?.access_token;
     if(!renewed) return {user:null};
-    try{return await cloudRequest('state?birthdays=1',undefined,renewed);}
+    try{return await cloudRequest(route,undefined,renewed);}
     catch(retryError){
      if(retryError.status!==401) throw retryError;
      if(readCloudSession()?.access_token===renewed) saveCloudSession(null);
@@ -580,13 +591,19 @@ function renderWheel(unlocked){
  $('#today-wheel').href=$('#wheel-scratch-link').hidden?'#gluecksrad':'#scratch-area';
 }
 
-function prankDisplayName(handle,id){
- const nickname=state.coins?.nicknames?.[id];
+function prankDisplayName(handle,id,nicknames=state.coins?.nicknames){
+ const nickname=nicknames?.[id];
  return nickname?handle+' „'+nickname+'“':handle;
 }
 
-function renderRanking() {
+function renderRanking(snapshot=rankingSnapshot??state) {
  const target=$('#ranking');
+ const {user,season,coins}=snapshot;
+ const standings=snapshot[rankingPeriod];
+ const signature=JSON.stringify([rankingPeriod,user,standings,season,coins?.friends,coins?.nicknames]);
+ if(signature===rankingSignature) return;
+ rankingSignature=signature;
+ const focusedMember=target.contains(document.activeElement)?document.activeElement.dataset.memberId:null;
  const seasonInfo=$('#season-info');
  const winner=$('#season-winner');
  const prizes=$('#season-prizes');
@@ -597,21 +614,21 @@ function renderRanking() {
  payouts.hidden=true;
  for(const button of document.querySelectorAll('[data-ranking]')){
   button.setAttribute('aria-pressed',String(button.dataset.ranking===rankingPeriod));
-  if(button.dataset.ranking==='seasonRanking'&&state.season?.start){
-   const [year,month]=state.season.start.split('-').map(Number);
+  if(button.dataset.ranking==='seasonRanking'&&season?.start){
+   const [year,month]=season.start.split('-').map(Number);
    const monthsSinceFirstSeason=(year-2026)*12+month-11;
    button.textContent='Season '+Math.max(1,1+Math.floor(monthsSinceFirstSeason/2));
   }
  }
  target.replaceChildren();
- if(!state.user){
+ if(!user){
   const copy=document.createElement('p');
   copy.textContent='Melde dich an, um die Rangliste deiner Freunde zu sehen.';
   target.append(copy);
   return;
  }
  if(rankingPeriod==='seasonRanking'){
-  const {start,end,winners,prizes:amounts=[],previousPayouts=[]}=state.season;
+  const {start,end,winners,prizes:amounts=[],previousPayouts=[]}=season;
   const date=day=>day.split('-').reverse().join('.');
   seasonInfo.textContent=date(start)+' – '+date(end)+' · Die Gruppe spendiert Platz 1 einen Döner.';
   seasonInfo.hidden=false;
@@ -635,23 +652,24 @@ function renderRanking() {
  }
  const list=document.createElement('ol');
  list.className='ranking';
- const memberIds=new Map((state.coins?.friends||[]).map(member=>[member.handle,member.id]));
+ const memberIds=new Map((coins?.friends||[]).map(member=>[member.handle,member.id]));
  let rank=0;
  let previous=null;
- state[rankingPeriod].forEach(({handle,points},index)=>{
+ standings.forEach(({handle,points},index)=>{
   if(previous!==points) rank=index+1;
   previous=points;
   const row=document.createElement('li');
   const place=document.createElement('span');
-  const isSelf=handle===state.user.handle;
+  const isSelf=handle===user.handle;
   const memberId=memberIds.get(handle);
   const name=document.createElement(memberId?'button':'span');
   const score=document.createElement('strong');
   place.textContent=rank+'.';
-  name.textContent=prankDisplayName(handle,isSelf?state.user.id:memberId)+(isSelf?' · Du':'');
+  name.textContent=prankDisplayName(handle,isSelf?user.id:memberId,coins?.nicknames)+(isSelf?' · Du':'');
   if(memberId){
    name.type='button';
    name.className='member-link';
+   name.dataset.memberId=memberId;
    name.setAttribute('aria-haspopup','dialog');
    name.addEventListener('click',()=>showMemberSummary(memberId,handle));
   }
@@ -660,25 +678,41 @@ function renderRanking() {
   list.append(row);
  });
  target.append(list);
+ if(focusedMember) target.querySelector(`[data-member-id="${CSS.escape(focusedMember)}"]`)?.focus({preventScroll:true});
 }
 
 const memberDialog=$('#member-summary');
-let memberSummaryRequest=0;
+let activeMember;
 $('#close-member-summary').addEventListener('click',()=>memberDialog.close());
+memberDialog.addEventListener('close',()=>{
+ if(memberDialog.open) return;
+ activeMember=undefined;
+ if(state?.user&&rankingSnapshot) renderRanking();
+});
 
-async function showMemberSummary(id,handle){
- const request=++memberSummaryRequest;
- const owner=state.user.id;
- const content=$('#member-summary-content');
- $('#member-summary-title').textContent=prankDisplayName(handle,id);
- content.hidden=true;
+function showMemberSummary(id,handle){
+ activeMember={id,owner:state.user.id};
+ $('#member-summary-title').textContent=prankDisplayName(handle,id,(rankingSnapshot??state).coins?.nicknames);
+ $('#member-summary-content').hidden=true;
  setError('#member-summary-status','Übersicht wird geladen …');
  memberDialog.showModal();
- const isCurrent=()=>request===memberSummaryRequest && memberDialog.open && owner===state.user?.id;
+ refreshMemberSummary();
+}
+
+async function refreshMemberSummary(quiet=false){
+ const member=activeMember;
+ if(!member||!memberDialog.open||member.loading) return;
+ const {id,owner}=member;
+ const isCurrent=()=>member===activeMember&&memberDialog.open&&owner===state?.user?.id;
+ if(!isCurrent()) return;
+ member.loading=true;
  try{
   const summary=await api('members/'+encodeURIComponent(id));
   if(!isCurrent()) return;
-  $('#member-summary-title').textContent=prankDisplayName(summary.handle,id);
+  const nicknames=(rankingSnapshot??state).coins?.nicknames;
+  const signature=JSON.stringify([summary,nicknames?.[id]]);
+  if(signature===member.signature) return;
+  $('#member-summary-title').textContent=prankDisplayName(summary.handle,id,nicknames);
   showCoins($('#member-summary-balance'),summary.balance);
   const daily=$('#member-summary-daily');
   daily.replaceChildren();
@@ -712,11 +746,31 @@ async function showMemberSummary(id,handle){
   }
   $('#member-summary-weekly-section').hidden=!summary.weekly.length;
   setError('#member-summary-status');
-  content.hidden=false;
-  loadMemberGallery(id,isCurrent);
+  $('#member-summary-content').hidden=false;
+  if(!member.signature) loadMemberGallery(id,isCurrent);
+  member.signature=signature;
  } catch(error){
-  if(isCurrent()) setError('#member-summary-status',error.message);
- }
+  if(!quiet&&isCurrent()) setError('#member-summary-status',error.message);
+ }finally{member.loading=false;}
+}
+
+async function refreshRankingQuietly(){
+ if(rankingPending||busy||quantityQueue.size) return;
+ const previous=state;
+ rankingPending=true;
+ try{
+  const next=await api('state?birthdays=0');
+  if(state!==previous||busy||quantityQueue.size||next.user?.id!==previous.user.id||next.deck.day!==previous.deck.day) return;
+  rankingSnapshot=next;
+  if(!document.hidden&&currentView==='heute'&&!memberDialog.open) renderRanking();
+ }catch{/* Keep the visible ranking until the next successful refresh. */}
+ finally{rankingPending=false;}
+}
+
+function refreshVisibleSocial(){
+ if(document.hidden||!state?.user) return;
+ if(currentView==='heute') refreshRankingQuietly();
+ if(memberDialog.open) refreshMemberSummary(true);
 }
 
 let portraitLoad;
@@ -782,6 +836,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden && state?.
 async function refresh() {
  const hadCloudSession=Boolean(cloudSession);
  state=await api('state');
+ rankingSnapshot=undefined;
  if(stopwatchOwner!==state.user?.id || stopwatchDay!==state.deck?.day){
   stopwatchOwner=state.user?.id;
   stopwatchDay=state.deck?.day;
@@ -1642,6 +1697,11 @@ if(location.protocol!=='file:'){
  renderBirthdayGreeting();
  setInterval(refreshNewDay,1000);
  document.addEventListener('visibilitychange',refreshNewDay);
+ setInterval(refreshVisibleSocial,30000);
+ document.addEventListener('visibilitychange',refreshVisibleSocial);
+ window.addEventListener('focus',refreshVisibleSocial);
+ window.addEventListener('online',refreshVisibleSocial);
+ window.addEventListener('pageshow',event=>{if(event.persisted) refreshVisibleSocial();});
 }
 
 const profile=setupProfile({
