@@ -371,7 +371,7 @@ function render() {
  const rest=Boolean(coins?.rest);
  const symbols=dailyPrankSymbols(coins?.items||[],user.id);
  const savedAmounts=new Map(quantities.map(item=>[item.exercise,item.amount]));
- const unlocked=cloudUrl?state.workoutFinished||state.spins.length>0:Boolean(!state.defaultSkip||state.skippedExercise)&&(rest||deck.daily.every(item=>item.id===(state.skippedExercise||state.defaultSkip)||(savedAmounts.get(item.id)||0)>=item.target));
+ const unlocked=cloudUrl?state.workoutFinished||state.birthdayWheelUnlocked||state.spins.length>0:Boolean(!state.defaultSkip||state.skippedExercise)&&(rest||deck.daily.every(item=>item.id===(state.skippedExercise||state.defaultSkip)||(savedAmounts.get(item.id)||0)>=item.target));
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
  renderDaySummary(amounts);
@@ -445,7 +445,7 @@ function render() {
      <dd id="workout-total" ${state.workoutFinished?'':'hidden'}></dd>
     </div>
    </dl>
-   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':state.defaultSkip&&!state.skippedExercise?'Wähle zuerst eine Übung, die du heute streichst.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
+   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':state.defaultSkip&&!state.skippedExercise?'Wähle zuerst eine Übung, die du heute streichst.':state.birthdayWheelUnlocked?'Dein Geburtstagsdreh ist bereits freigeschaltet.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
   </article>`:'');
  updateStopwatchControls();
@@ -631,9 +631,11 @@ function renderWheel(unlocked){
  wheelAction.disabled=!unlocked && !pending;
  wheelAction.textContent=pending?'Aufgabe erledigt':bonus?'Bonusdreh nutzen':'Rad drehen';
  $('#wheel-lock').hidden=$('#wheel-dialog-lock').hidden=Boolean(unlocked || pending || wheelAction.hidden);
+ const birthdaySpin=state.birthdayWheelUnlocked&&!spin;
+ $('#wheel-birthday').hidden=!birthdaySpin;
  $('#wheel-scratch-link').hidden=!(state.scratchTickets??[]).some(ticket=>ticket.day===state.deck.day&&!ticket.claimed);
- $('#today-wheel').textContent=!$('#wheel-scratch-link').hidden?'Lose freirubbeln':unlocked&&!wheelAction.hidden?'Glücksrad bereit':'Glücksrad';
- $('#today-wheel').href=$('#wheel-scratch-link').hidden?'#gluecksrad':'#scratch-area';
+ $('#today-wheel').textContent=birthdaySpin?'Geburtstagsdreh':!$('#wheel-scratch-link').hidden?'Lose freirubbeln':unlocked&&!wheelAction.hidden?'Glücksrad bereit':'Glücksrad';
+ $('#today-wheel').href=birthdaySpin||$('#wheel-scratch-link').hidden?'#gluecksrad':'#scratch-area';
 }
 
 function prankDisplayName(handle,id,nicknames=state.coins?.nicknames){

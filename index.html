@@ -108,6 +108,7 @@
      <p>Ein Dreh kann dir <strong>25 Punkte bringen</strong> oder <strong>bis zu 30 kosten</strong>. Extra-Aufgaben kannst du bis Mitternacht abhaken. Die Extrarunde gibt dir 5 Punkte und kann einen zweiten Dreh freischalten.</p>
      <p class="wheel-jackpot"><span class="coin-icon" aria-hidden="true"></span> Goldfeld: 15 Münzen · 1 % Chance</p>
      <p id="wheel-lock">Schließe zuerst dein Workout ab.</p>
+     <p id="wheel-birthday" class="accent" hidden>🎂 Dein Geburtstagsdreh ist heute freigeschaltet.</p>
      <div id="wheel-result" class="wheel-result" role="status" hidden></div>
      <button class="primary" type="button" id="wheel-open" aria-haspopup="dialog">Glücksrad öffnen</button>
     </div>
@@ -217,7 +218,7 @@
       <label>Geburtsdatum<input name="birthDate" type="date" min="1900-01-01" autocomplete="bday"></label>
       <p class="hint" id="profile-known-birthday" hidden></p>
       <label class="challenge-enabled"><input name="showBirthday" type="checkbox"> Geburtstagsgruß in der Gruppe anzeigen</label>
-      <p class="hint">Dein Geburtsjahr bleibt privat. Am Geburtstag bekommst du drei Rubbellose, die bis Mitternacht gültig sind.</p>
+      <p class="hint">Dein Geburtsjahr bleibt privat. Am Geburtstag bekommst du einen Gutschein für einen freien Tag und drei Rubbellose, die bis Mitternacht gültig sind.</p>
       <h3>Benachrichtigungen</h3>
       <label class="challenge-enabled"><input name="workoutReminders" type="checkbox"> An mein offenes Workout erinnern</label>
       <label>Uhrzeit (Berlin)<input name="reminderTime" type="time" required></label>
@@ -260,6 +261,7 @@
     <p>Jeder Dreh gibt dir zwei Rubbellose, die bis Mitternacht gültig sind. Drei gleiche Zahlen gewinnen. Die Chancen pro Los sind 63 % für eine Niete, 22 % für 1 Münze, 10 % für 2 Münzen, 4,5 % für 3 Münzen und 0,5 % für 15 Münzen.</p>
     <p>Rad-Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung gleichst du 30 Minuspunkte mit 30 zusätzlichen Liegestützen aus.</p>
     <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel.</p>
+    <p>Wenn du die App an deinem Geburtstag öffnest, bekommst du einen Gutschein für einen freien Tag und drei Geburtstagslose.</p>
    </details>
    <details class="panel info-card">
     <summary>Münzen und Pranks</summary>
@@ -381,7 +383,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.50</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.51</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>
