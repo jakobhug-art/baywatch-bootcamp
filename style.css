@@ -75,6 +75,8 @@ progress::-webkit-progress-bar{background:#31313f}progress::-webkit-progress-val
 .mark[aria-pressed=true]{color:var(--tone);border-color:var(--tone)}
 .lower{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .panel{border:1px solid var(--line);border-radius:15px;background:var(--surface);padding:17px;margin-top:13px}
+.profile-push{margin-top:6px;padding-top:14px;border-top:1px solid var(--line)}
+.profile-push-actions{display:flex;flex-wrap:wrap;gap:8px}
 .panel p{color:var(--muted)}
 .panel strong{color:var(--text)}
 .segments{display:flex;gap:6px}

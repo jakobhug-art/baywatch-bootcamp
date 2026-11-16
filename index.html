@@ -223,8 +223,17 @@
       <label class="challenge-enabled"><input name="workoutReminders" type="checkbox"> An mein offenes Workout erinnern</label>
       <label>Uhrzeit (Berlin)<input name="reminderTime" type="time" required></label>
       <label class="challenge-enabled"><input name="friendNotifications" type="checkbox"> Workout-Abschlüsse von Freunden</label>
-      <p class="hint">Diese Auswahl gilt für die kommende Push-Funktion.</p>
+      <p class="hint">Speichere deine Auswahl und aktiviere Push auf jedem Gerät, auf dem du Benachrichtigungen erhalten möchtest.</p>
       <button class="primary" type="submit">Einstellungen speichern</button>
+      <section class="profile-push" aria-labelledby="push-title">
+       <h3 id="push-title">Push auf diesem Gerät</h3>
+       <p id="push-status" class="hint" role="status"></p>
+       <div class="profile-push-actions">
+        <button id="push-enable" class="primary" type="button" hidden>Push aktivieren</button>
+        <button id="push-test" class="outline" type="button" hidden>Testnachricht senden</button>
+        <button id="push-disable" class="outline" type="button" hidden>Push deaktivieren</button>
+       </div>
+      </section>
      </form>
      <form class="panel" id="profile-password-form">
       <h3>Passwort ändern</h3>
@@ -383,7 +392,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.53</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.54</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>

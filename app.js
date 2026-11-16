@@ -1,6 +1,7 @@
 import { createScratchTicket } from './scratch-ticket.mjs';
 import { setupGroupChat } from './group-chat.mjs';
 import { setupInstallableApp } from './pwa.mjs';
+import { setupPush } from './push.mjs';
 import { wheel, wheelSegments } from './wheel.mjs';
 import { exercisePoints } from './scoring.mjs';
 import { setupProfile } from './profile.mjs';
@@ -226,7 +227,7 @@ document.addEventListener('click',event=>{if(moreNav.open&&!moreNav.contains(eve
 moreNav.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&moreNav.open){moreNav.open=false;moreNav.querySelector('summary').focus();}
 });
-if(cloudUrl) setupInstallableApp(()=>busy||quantityQueue.size>0);
+const push=cloudUrl?setupPush({api,registration:setupInstallableApp(()=>busy||quantityQueue.size>0)}):null;
 const sessionKey = 'baywatch-bootcamp-session';
 let cloudSession = null;
 let sessionStorageSource;
@@ -315,6 +316,7 @@ async function api(path, payload) {
   }
   await refreshCloudSession();
   if(path==='logout'){
+   await push?.signOut();
    await cloudRequest(path,payload,cloudSession?.access_token);
    saveCloudSession(null);
    trainingAudio?.close().catch(()=>{});
@@ -1773,7 +1775,10 @@ const profile=setupProfile({
 });
 
 function syncProfile(){
- profile(cloudUrl?state?.user:null,state?.deck?.day,currentView==='profil');
+ const user=cloudUrl?state?.user:null;
+ const visible=currentView==='profil';
+ profile(user,state?.deck?.day,visible);
+ push?.sync(user,visible);
 }
 
 $('#points-reset').addEventListener('submit',async event=>{

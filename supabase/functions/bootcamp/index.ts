@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { drawScratchValues, drawWheelSlot, wheel } from "../_shared/wheel.mjs";
+import { isPushEndpoint } from "../_shared/push-endpoint.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -115,6 +116,13 @@ Deno.serve(async (request) => {
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc("bootcamp_profile_settings", { p_user: data.user.id });
+    }
+    if (path === "/push/key" && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      const publicKey = Deno.env.get("BOOTCAMP_VAPID_PUBLIC_KEY");
+      return publicKey ? json({ publicKey }) : json({ error: "Push ist gerade nicht verfügbar." }, 503);
     }
     if (path === "/wheel/activity" && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);
@@ -243,10 +251,22 @@ Deno.serve(async (request) => {
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
       "/wheel/spin", "/wheel/complete", "/wheel/scratch", "/workout/skip", "/food-polls", "/food-polls/vote",
       "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members", "/chat", "/chat/pin",
-      "/profile", "/profile/password"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/profile", "/profile/password", "/push/device"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+    if (path === "/push/device") {
+      const { action, endpoint, keys } = input;
+      if (!["enable", "disable", "status", "test"].includes(action) || !isPushEndpoint(endpoint)) {
+        return json({ error: "Dieses Push-Abo wird nicht unterstützt." }, 400);
+      }
+      if (action === "enable" && (typeof keys?.p256dh !== "string" || !/^[\w-]{87}=?$/.test(keys.p256dh) ||
+          typeof keys?.auth !== "string" || !/^[\w-]{22}(==)?$/.test(keys.auth))) {
+        return json({ error: "Die Gerätefreigabe konnte nicht gespeichert werden." }, 400);
+      }
+      return rpc("bootcamp_push_device", { p_user: data.user.id, p_action: action, p_endpoint: endpoint,
+        p_p256dh: action === "enable" ? keys.p256dh : null, p_auth: action === "enable" ? keys.auth : null });
+    }
     if (path === "/profile") {
       if (input.birthDate !== null) {
         if (typeof input.birthDate !== "string" || !isoDay.test(input.birthDate)) return json({ error: "Ungültiges Geburtsdatum." }, 400);

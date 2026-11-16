@@ -3,12 +3,12 @@ export function setupInstallableApp(hasPendingChanges){
  const installed=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true||query.get('app')==='1';
  const preview=query.get('install')==='1';
  document.querySelector('#install-nav').hidden=installed;
- if(!installed&&!preview) return;
-
- const manifest=document.createElement('link');
- manifest.rel='manifest';
- manifest.href='./app.webmanifest';
- document.head.append(manifest);
+ if(installed||preview){
+  const manifest=document.createElement('link');
+  manifest.rel='manifest';
+  manifest.href='./app.webmanifest';
+  document.head.append(manifest);
+ }
 
  const installPanel=document.querySelector('#app-install');
  const installGuide=document.querySelector('#app-install-guide');
@@ -47,7 +47,7 @@ export function setupInstallableApp(hasPendingChanges){
   update.hidden=true;
  });
 
- workers.register('./sw.js',{updateViaCache:'none'}).then(registration=>{
+ return workers.register('./sw.js',{updateViaCache:'none'}).then(registration=>{
   function showWaitingUpdate(){
    if(!registration.waiting||!workers.controller) return;
    update.hidden=false;
@@ -91,5 +91,6 @@ export function setupInstallableApp(hasPendingChanges){
     updateStatus.textContent='Das Update wartet noch. Versuche es erneut.';
    },10000);
   });
- }).catch(()=>{});
+  return workers.ready;
+ }).catch(()=>null);
 }

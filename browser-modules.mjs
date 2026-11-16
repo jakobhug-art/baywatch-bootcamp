@@ -5,6 +5,7 @@ export const browserModules={
  'media-admin.mjs':'media-admin.mjs',
  'profile.mjs':'profile.mjs',
  'pwa.mjs':'pwa.mjs',
+ 'push.mjs':'push.mjs',
  'scoring.mjs':'scoring.mjs',
  'scratch-ticket.mjs':'scratch-ticket.mjs',
  'season-media.mjs':'season-media.mjs',

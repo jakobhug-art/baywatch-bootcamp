@@ -5,6 +5,33 @@ self.addEventListener('message',event=>{
  if(event.data==='bootcamp-activate') event.waitUntil(self.skipWaiting());
 });
 
+self.addEventListener('push',event=>{
+ let data;
+ try{data=event.data?.json();}catch{}
+ event.waitUntil(self.registration.showNotification('Baywatch Bootcamp',{
+  body:data?.body||'Du hast eine neue Nachricht von Bootcamp.',
+  icon:new URL('./bootcamp-192.png',self.registration.scope).href,
+  tag:data?.tag,
+  data:{url:data?.url}
+ }));
+});
+
+self.addEventListener('notificationclick',event=>{
+ event.notification.close();
+ const route=event.notification.data?.url;
+ const hash=['#rangliste','#heute','#profil'].includes(route)?route:'#start';
+ const target=new URL(hash,self.registration.scope);
+ event.waitUntil((async()=>{
+  const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+  for(const client of windows){
+   if(!client.url.startsWith(self.registration.scope)) continue;
+   const destination=client.url===target.href?client:await client.navigate(target.href);
+   if(destination){await destination.focus();return;}
+  }
+  await self.clients.openWindow(target.href);
+ })());
+});
+
 self.addEventListener('fetch',event=>{
  if(event.request.mode!=='navigate'||new URL(event.request.url).origin!==self.location.origin) return;
  event.respondWith(fetch(event.request,{cache:'no-cache'}).catch(()=>new Response(`<!doctype html>

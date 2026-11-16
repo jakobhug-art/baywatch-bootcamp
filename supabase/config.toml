@@ -5,3 +5,6 @@ enable_signup = false
 
 [functions.bootcamp]
 verify_jwt = false
+
+[functions.bootcamp-push]
+verify_jwt = false
