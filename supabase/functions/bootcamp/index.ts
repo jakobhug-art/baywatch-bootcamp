@@ -107,6 +107,14 @@ Deno.serve(async (request) => {
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc("bootcamp_training_state", { p_user: data.user.id });
     }
+    if (path === "/chat" && request.method === "GET") {
+      const before = new URL(request.url).searchParams.get("before");
+      if (before !== null && !/^\d{1,18}$/.test(before)) return json({ error: "Ungültige Seite." }, 400);
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      return rpc("bootcamp_chat", { p_user: data.user.id, p_before: before });
+    }
     const pollPhoto = path?.match(/^\/food-polls\/([^/]+)\/photo$/)?.[1];
     if ((path === "/food-polls" || pollPhoto) && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);
@@ -171,7 +179,7 @@ Deno.serve(async (request) => {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > (path === "/coins/buy" ? 810000 : path === "/workout/finish" || path === "/food-polls" ? 220000 : 4096)) {
+      if (size > (path === "/coins/buy" ? 810000 : path === "/workout/finish" || path === "/food-polls" ? 220000 : path === "/chat" ? 8192 : 4096)) {
         await reader.cancel();
         return json({ error: "Anfrage zu groß." }, 413);
       }
@@ -219,10 +227,20 @@ Deno.serve(async (request) => {
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
       "/wheel/spin", "/wheel/complete", "/wheel/scratch", "/workout/skip", "/food-polls", "/food-polls/vote",
-      "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members", "/chat", "/chat/pin"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+    if (path === "/chat") {
+      const message = typeof input.body === "string" ? input.body.trim() : "";
+      if (!message || [...message].length > 1000 || message.includes("\0") || typeof input.requestId !== "string" || !uuid.test(input.requestId)) {
+        return json({ error: "Schreib eine Nachricht mit bis zu 1.000 Zeichen." }, 400);
+      }
+      return rpc("bootcamp_chat_send", { p_user: data.user.id, p_request: input.requestId, p_body: message });
+    }
+    if (path === "/chat/pin" && typeof input.id === "string" && /^\d{1,18}$/.test(input.id) && typeof input.pin === "boolean") {
+      return rpc("bootcamp_chat_pin", { p_user: data.user.id, p_id: input.id, p_pin: input.pin });
+    }
     if (path === "/workout/skip" && typeof input.day === "string" && isoDay.test(input.day) && typeof input.exercise === "string") {
       return rpc("bootcamp_choose_skip", { p_user: data.user.id, p_day: input.day, p_exercise: input.exercise });
     }

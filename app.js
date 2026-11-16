@@ -1,4 +1,5 @@
 import { createScratchTicket } from './scratch-ticket.mjs';
+import { setupGroupChat } from './group-chat.mjs';
 
 const $ = selector => document.querySelector(selector);
 function showCoins(element,amount,suffix=''){
@@ -198,6 +199,8 @@ function readCloudSession(){
  }
  return null;
 }
+
+const syncGroupChat=setupGroupChat(api);
 
 function saveCloudSession(session){
  cloudSession=session;
@@ -744,6 +747,7 @@ async function refresh() {
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
  syncPortraits();
  renderScratchTickets();
+ syncGroupChat(cloudUrl?state.user:null);
  syncFoodPolls();
  if(signedIn) render();
  else{

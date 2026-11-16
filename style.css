@@ -230,6 +230,24 @@ form .challenge-enabled input{width:auto}
 .header-brand small{color:var(--muted);font:600 11px/1.2 "DM Sans",system-ui,sans-serif;letter-spacing:0}
 @media(max-width:380px){.header-brand .brand-icon{display:none}.header-brand small{font-size:10px}}
 .app-version{white-space:nowrap}
+#chat-open{border:0;padding:0;background:transparent;color:inherit;font:inherit}
+#chat-open:hover{color:var(--lime)}
+#chat-dialog{width:min(640px,calc(100% - 20px));max-width:none;height:min(720px,calc(100dvh - 20px));max-height:calc(100dvh - 20px);padding:clamp(12px,3vw,22px)}
+#chat-dialog[open]{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;gap:10px}
+.chat-pinned{grid-row:2;padding:9px 12px;border:1px solid #655282;border-radius:10px;background:#2b223d;max-height:22dvh;overflow:auto}
+.chat-thread{grid-row:3;overflow:auto;overscroll-behavior:contain;padding:4px;scrollbar-gutter:stable}
+.chat-messages{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.chat-message{padding:9px 12px;border-radius:10px;background:#252436;min-width:0}
+.chat-message.own{margin-inline-start:clamp(12px,9vw,76px);background:#243033}
+.chat-message header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 12px}
+.chat-message time{font-size:12px;color:var(--muted)}
+.chat-message p,.chat-pinned p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-message button,.chat-pinned button{margin-top:5px;padding:0;border:0;background:transparent;color:var(--cyan);font:inherit;font-size:12px}
+.chat-message button:hover,.chat-pinned button:hover{text-decoration:underline}
+#chat-more{margin-bottom:10px}
+#chat-form{grid-row:4;display:flex;align-items:flex-end;gap:8px}
+#chat-form textarea{width:100%;min-width:0;max-height:20dvh;resize:vertical;border:1px solid var(--line);border-radius:10px;background:#111118;color:var(--text);padding:8px;font:inherit;font-size:16px}
+.chat-status{grid-row:5;margin:0;color:var(--pink)}
 .birthday-banner{margin-bottom:14px;border-color:var(--purple);background:linear-gradient(110deg,#322044,#1b2536);padding:14px 18px}
 .birthday-banner strong{color:var(--pink);font-size:1.1rem}
 .birthday-banner p{margin:3px 0 0}

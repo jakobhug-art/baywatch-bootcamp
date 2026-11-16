@@ -13,7 +13,7 @@
  <header class="top"><div class="shell top-inner">
   <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small data-member hidden>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
   <nav aria-label="Hauptnavigation" data-member hidden>
-   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a><a href="#fettstrafe" id="food-polls-link" hidden>Fettstrafe</a><a href="#info">Info</a>
+   <a href="#heute">Heute</a><a href="#gluecksrad">Glücksrad</a><a href="#woche">Woche</a><a href="#monat">Monat</a><a href="#rangliste">Rangliste</a><a href="#muenzen">Münzen</a><a href="#fettstrafe" id="food-polls-link" hidden>Fettstrafe</a><button id="chat-open" type="button" aria-haspopup="dialog" hidden>Chat</button><a href="#info">Info</a>
   </nav>
   <button class="outline" id="account">Anmelden</button>
  </div></header>
@@ -298,7 +298,24 @@
    </div>
   </section>
  </main>
- <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.35</small></footer>
+ <footer class="shell footer"><a href="#heute" class="brand">Baywatch Bootcamp</a><a href="#info" data-member hidden>Info</a><a href="#muenzen" data-member hidden>Münzkonto</a><a href="#feedback" data-member hidden>Bugs & Ideen</a><small class="app-version">Version 0.1.36</small></footer>
+ <dialog id="chat-dialog" aria-labelledby="chat-title">
+  <div class="dialog-heading">
+   <h2 id="chat-title">Gruppenchat</h2>
+   <button class="outline" id="chat-close" type="button" aria-label="Chat schließen">✕</button>
+  </div>
+  <aside class="chat-pinned" aria-label="Angeheftete Nachricht" hidden></aside>
+  <div class="chat-thread" tabindex="0" aria-label="Nachrichten">
+   <button class="outline" id="chat-more" type="button" hidden>Ältere Nachrichten laden</button>
+   <p id="chat-empty" hidden>Hier ist noch Platz für die erste Nachricht.</p>
+   <ol class="chat-messages" role="log" aria-label="Gruppenchat-Nachrichten"></ol>
+  </div>
+  <form id="chat-form">
+   <textarea name="message" rows="2" maxlength="1000" required aria-label="Nachricht schreiben" placeholder="Nachricht schreiben …"></textarea>
+   <button class="primary" type="submit">Senden</button>
+  </form>
+  <p class="chat-status" role="status" hidden></p>
+ </dialog>
  <dialog id="wheel-dialog" aria-labelledby="wheel-dialog-title">
   <div class="dialog-heading">
    <h2 id="wheel-dialog-title">Glücks- &amp; Pechrad</h2>
