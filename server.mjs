@@ -29,7 +29,7 @@ db.exec(`
  CREATE TABLE IF NOT EXISTS wheel_spins(
   user_id INTEGER REFERENCES users(id), day TEXT, slot INTEGER, title TEXT, description TEXT,
   initial INTEGER NOT NULL, reward INTEGER, completed INTEGER NOT NULL DEFAULT 0,
-  turn INTEGER NOT NULL DEFAULT 1, bonus INTEGER NOT NULL DEFAULT 0,
+  turn INTEGER NOT NULL DEFAULT 1, bonus INTEGER NOT NULL DEFAULT 0, spun_at TEXT,
   PRIMARY KEY(user_id,day,turn)
  );
 `);
@@ -49,7 +49,13 @@ if(!db.prepare('PRAGMA table_info(wheel_spins)').all().some(column=>column.name=
   COMMIT;
  `);
 }
+if(!db.prepare('PRAGMA table_info(wheel_spins)').all().some(column=>column.name==='spun_at')){
+ db.exec('ALTER TABLE wheel_spins ADD COLUMN spun_at TEXT');
+}
 const wheelResults=db.prepare('SELECT turn,slot,title,description,initial,reward,completed,bonus FROM wheel_spins WHERE user_id=? AND day=? ORDER BY turn');
+const wheelNibbleCount=db.prepare('SELECT count(*) AS count FROM wheel_spins WHERE slot=9');
+const recentWheelSpins=db.prepare(`SELECT u.handle,s.day,s.slot,s.title FROM wheel_spins s JOIN users u ON u.id=s.user_id
+ ORDER BY s.day DESC,s.spun_at DESC,s.turn DESC,s.user_id LIMIT 8`);
 const scratchTicketSchema=`CREATE TABLE IF NOT EXISTS scratch_tickets(
  user_id INTEGER NOT NULL, day TEXT NOT NULL, turn INTEGER NOT NULL, symbols TEXT NOT NULL, claimed_on TEXT,
  ticket INTEGER NOT NULL DEFAULT 1 CHECK(ticket IN (1,2)),
@@ -226,6 +232,10 @@ createServer(async (req,res)=>{
    }
   }
   const deck=challenges.current();
+  if(req.method==='GET' && path==='/api/wheel/activity'){
+   if(!user) fail(401,'Bitte melde dich an.');
+   return reply({nibbelzwickCount:wheelNibbleCount.get().count,recent:recentWheelSpins.all()});
+  }
   const memberPath=path.match(/^\/api\/members\/(\d+)$/);
   if(req.method==='GET' && memberPath){
    if(!user) fail(401,'Bitte melde dich an.');
@@ -349,8 +359,8 @@ createServer(async (req,res)=>{
       amount=-Math.min(-amount,Math.max(0,coins.balance(user.id)));
       description=amount===0?'Dein Münzkonto war leer.':amount===-1?'Dir wurde 1 Münze abgezogen.':'Dir wurden 2 Münzen abgezogen.';
      }
-     const result=db.prepare('INSERT OR IGNORE INTO wheel_spins(user_id,day,slot,title,description,initial,reward,turn,bonus) VALUES(?,?,?,?,?,?,?,?,?)')
-      .run(user.id,deck.day,slot,card.title,description,card.initial,card.reward??null,nextTurn,bonus);
+     const result=db.prepare('INSERT OR IGNORE INTO wheel_spins(user_id,day,slot,title,description,initial,reward,turn,bonus,spun_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
+      .run(user.id,deck.day,slot,card.title,description,card.initial,card.reward??null,nextTurn,bonus,new Date().toISOString());
      if(!result.changes) fail(409,'Du hast heute bereits gedreht.');
      for(const ticket of [1,2]) addScratchTicket.run(user.id,deck.day,nextTurn,ticket,JSON.stringify(drawScratchValues(randomInt)));
      if(amount) coins.credit.run(user.id,amount,amount<0?'Glücksrad · Münzverlust':slot===10?'Glücksrad-Jackpot':'Glücksrad',deck.day);

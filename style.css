@@ -162,6 +162,15 @@ body:has(#wheel-dialog[open]){overflow:hidden}
 #wheel-dialog-error{color:var(--pink)}
 .wheel-copy>p{margin:0 0 12px}
 .wheel-jackpot{color:#ffe18a;font-weight:700}
+.wheel-activity{margin-top:14px}
+.wheel-activity h3{font-size:16px}
+.wheel-tally{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;padding:10px 12px;border:1px solid #634461;border-radius:10px;background:#2e2135}
+.wheel-tally p{margin:3px 0 0;color:var(--muted);font-size:13px}
+#wheel-nibbles{color:var(--pink);font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.wheel-recent-spins{list-style:none;margin:5px 0 0;padding:0;font-size:13px}
+.wheel-recent-spins li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto;gap:8px;align-items:baseline;padding:5px 0;overflow-wrap:anywhere}
+.wheel-recent-spins li+li{border-top:1px solid var(--line)}
+.wheel-recent-spins time{color:var(--muted);white-space:nowrap}
 .scratch-area{margin-top:14px}
 .scratch-area>h2{font-size:22px;margin:0}
 .scratch-area>p{color:var(--muted);margin:6px 0 16px}

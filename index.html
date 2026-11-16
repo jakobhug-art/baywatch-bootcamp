@@ -112,6 +112,15 @@
      <button class="primary" type="button" id="wheel-open" aria-haspopup="dialog">Glücksrad öffnen</button>
     </div>
    </div>
+   <section class="panel wheel-activity" id="wheel-activity" aria-labelledby="wheel-activity-title" hidden>
+    <div class="wheel-tally">
+     <div><h3>Nibbelzwick-Zähler</h3><p>Hugo gibt Joni einen Nibbler. ♥</p></div>
+     <strong id="wheel-nibbles"></strong>
+    </div>
+    <h3 id="wheel-activity-title">Letzte Drehs</h3>
+    <p id="wheel-activity-empty" class="hint" hidden>Hier erscheinen die ersten Ergebnisse der Gruppe.</p>
+    <ol id="wheel-recent-spins" class="wheel-recent-spins"></ol>
+   </section>
    <div class="panel scratch-area" id="scratch-area" hidden>
     <h2>Rubbellose</h2>
     <p>Rubbel die drei Felder mit Finger oder Maus frei. Drei gleiche Zahlen gewinnen den angezeigten Münzbetrag.</p>
@@ -372,7 +381,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.49</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.50</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>

@@ -116,6 +116,12 @@ Deno.serve(async (request) => {
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
       return rpc("bootcamp_profile_settings", { p_user: data.user.id });
     }
+    if (path === "/wheel/activity" && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      return rpc("bootcamp_wheel_activity", { p_user: data.user.id });
+    }
     if (path === "/chat" && request.method === "GET") {
       const before = new URL(request.url).searchParams.get("before");
       if (before !== null && !/^\d{1,18}$/.test(before)) return json({ error: "Ungültige Seite." }, 400);
