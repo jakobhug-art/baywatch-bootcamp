@@ -462,9 +462,9 @@ const wheelFields=[
  ['+25 Punkte'],['+10 Punkte'],['−25 Punkte'],['−10 Punkte'],
  ['30 Liegestütze','oder −30 P'],['1 Min. Plank','für +10 P'],['6 Klimmzüge','für +15 P'],
  ['+5 Punkte','Extrarunde'],['Freier Tag','Gutschein'],['Nibbler ♥','Hugo & Joni'],['15 Münzen','Goldfeld · 1 %'],
- ['7 Münzen'],['3 Münzen']
+ ['7 Münzen'],['3 Münzen'],['−2 Münzen']
 ];
-const wheelColors=['#d8fa76','#ff8dc9','#83e9ff','#bea8ff','#ffb183','#ffe17a','#9df5c1','#fa9ea5','#d9c3ff','#ff729d','#e4a329','#ffc977','#83e4d0'];
+const wheelColors=['#d8fa76','#ff8dc9','#83e9ff','#bea8ff','#ffb183','#ffe17a','#9df5c1','#fa9ea5','#d9c3ff','#ff729d','#e4a329','#ffc977','#83e4d0','#f78c7a'];
 const gradient=wheelSegments.map(({slot,start,end})=>`${wheelColors[slot]} ${start}deg ${end}deg`).join(',');
 $('#gluecksrad').style.setProperty('--wheel-colors',`conic-gradient(from ${-wheelSegments[0].end/2}deg,${gradient})`);
 wheelDialog.style.setProperty('--wheel-colors',`conic-gradient(from ${-wheelSegments[0].end/2}deg,${gradient})`);
@@ -539,14 +539,17 @@ function renderWheelResult(result,cards){
   title.textContent=card.title;
   const description=document.createElement('p');
   description.textContent=card.description;
+  entry.append(title,description);
+  result.append(entry);
+  const coins=wheel[card.slot]?.coins??0;
+  if(coins<0) continue;
   const score=document.createElement('strong');
   if(card.completed) score.textContent='✓ Erledigt · '+signed(card.reward)+' P';
-  else if(wheel[card.slot]?.coins) showCoins(score,'+'+wheel[card.slot].coins);
+  else if(coins>0) showCoins(score,signed(coins));
   else if(card.reward===null) score.textContent=card.slot===8?'Gutschein im Münzkonto':signed(card.initial)+' P'+(card.bonus?' · Bonusdreh freigeschaltet':'');
   else if(card.initial<0) score.textContent=signed(card.initial)+' P aktuell · bei Erledigung kein Abzug';
   else score.textContent=signed(card.reward)+' P bei Erledigung';
-  entry.append(title,description,score);
-  result.append(entry);
+  entry.append(score);
  }
 }
 
@@ -1022,7 +1025,7 @@ wheelAction.addEventListener('click',async()=>{
   $('#wheel-scratch-link').hidden=true;
  }
  try {
-  await api(spinning?'wheel/spin':'wheel/complete',{day,turn,expandedWheel:true});
+  await api(spinning?'wheel/spin':'wheel/complete',{day,turn,expandedWheel:true,wheelVersion:2});
   await refresh();
   const result=state.deck?.day===day&&state.spins?.find(spin=>spin.turn===turn);
   if(spinning && result && !matchMedia('(prefers-reduced-motion: reduce)').matches){

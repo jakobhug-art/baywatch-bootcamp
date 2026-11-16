@@ -11,10 +11,12 @@ export const wheel = [
  {title:'Nibbler ❤️', description:'Hugo gibt Joni einen Nibbler.', initial:0},
  {title:'Münz-Jackpot', description:'Du gewinnst sofort 15 Münzen.', initial:0, coins:15},
  {title:'7 Münzen', description:'Du gewinnst sofort 7 Münzen.', initial:0, coins:7},
- {title:'3 Münzen', description:'Du gewinnst sofort 3 Münzen.', initial:0, coins:3}
+ {title:'3 Münzen', description:'Du gewinnst sofort 3 Münzen.', initial:0, coins:3},
+ {title:'−2 Münzen', description:'Dir werden bis zu 2 Münzen abgezogen.', initial:0, coins:-2}
 ];
 
 const regularSlots=wheel.map((_,slot)=>slot).filter(slot=>slot!==10);
+const previousSlots=regularSlots.filter(slot=>slot!==13);
 const regularWidth=356.4/regularSlots.length;
 export const wheelSegments=[...regularSlots,10].map((slot,index)=>{
  const start=index*regularWidth;
@@ -22,8 +24,11 @@ export const wheelSegments=[...regularSlots,10].map((slot,index)=>{
  return {slot,start,end,angle:(start+end-regularWidth)/2};
 });
 
-export function drawWheelSlot(randomInt,expanded=true){
- return randomInt(100)===0 ? 10 : expanded?regularSlots[randomInt(regularSlots.length)]:randomInt(10);
+export function drawWheelSlot(randomInt,version=2){
+ if(randomInt(100)===0) return 10;
+ if(version===0) return randomInt(10);
+ const slots=version===1?previousSlots:regularSlots;
+ return slots[randomInt(slots.length)];
 }
 
 export function drawScratchValues(randomInt){

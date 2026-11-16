@@ -323,12 +323,18 @@ createServer(async (req,res)=>{
     const card=wheel[slot];
     const bonus=Number(nextTurn===1 && card.bonus===true);
     coins.transaction(()=>{
+     let amount=card.coins??0;
+     let description=card.description;
+     if(amount<0){
+      amount=-Math.min(-amount,Math.max(0,coins.balance(user.id)));
+      description=amount===0?'Dein Münzkonto war leer.':amount===-1?'Dir wurde 1 Münze abgezogen.':'Dir wurden 2 Münzen abgezogen.';
+     }
      const result=db.prepare('INSERT OR IGNORE INTO wheel_spins(user_id,day,slot,title,description,initial,reward,turn,bonus) VALUES(?,?,?,?,?,?,?,?,?)')
-      .run(user.id,deck.day,slot,card.title,card.description,card.initial,card.reward??null,nextTurn,bonus);
+      .run(user.id,deck.day,slot,card.title,description,card.initial,card.reward??null,nextTurn,bonus);
      if(!result.changes) fail(409,'Du hast heute bereits gedreht.');
      db.prepare('INSERT INTO scratch_tickets(user_id,day,turn,symbols) VALUES(?,?,?,?)')
       .run(user.id,deck.day,nextTurn,JSON.stringify(drawScratchValues(randomInt)));
-     if(card.coins) coins.credit.run(user.id,card.coins,slot===10?'Glücksrad-Jackpot':'Glücksrad',deck.day);
+     if(amount) coins.credit.run(user.id,amount,amount<0?'Glücksrad · Münzverlust':slot===10?'Glücksrad-Jackpot':'Glücksrad',deck.day);
      if(card.rest) coins.grantRest.run(user.id);
     });
    } else {
