@@ -140,13 +140,15 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 .wheel-panel{display:grid;grid-template-columns:200px minmax(0,1fr);align-items:center;gap:26px;background:radial-gradient(ellipse at 13% 50%,#34224b,var(--surface) 55%)}
 .wheel-frame{position:relative;width:174px;height:174px;margin:12px auto;display:grid;place-items:center}
 .wheel-pointer{position:absolute;top:-13px;left:50%;translate:-50% 0;z-index:1;color:var(--text);font-size:25px;text-shadow:0 2px 4px #100917}
+.wheel-viewport{width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;border-radius:50%}
 .wheel-disc{width:100%;height:100%;border:5px solid #292537;border-radius:50%;display:grid;place-items:center;transform:rotate(var(--wheel-turn,0deg))}
 .wheel-disc>.wheel-hub,.wheel-disc>span:only-child{display:grid;place-items:center;width:56px;height:56px;border:3px solid #eee7fa;border-radius:50%;background:#241b32;color:var(--lime);font-size:32px}
 #wheel-dialog{width:min(760px,calc(100% - 20px));max-width:none;max-height:calc(100dvh - 20px);padding:clamp(12px,3vw,24px);background:radial-gradient(ellipse at 50% 33%,#39264c,#1c1b27 64%)}
 #wheel-dialog h2{font-size:clamp(21px,5vw,32px)}
 body:has(#wheel-dialog[open]){overflow:hidden}
 .wheel-frame-large{width:min(100%,550px,calc(100dvh - 220px));min-width:min(100%,340px);height:auto;aspect-ratio:1;margin:17px auto 10px;container-type:inline-size}
-.wheel-frame-large .wheel-disc{position:relative;border-width:clamp(3px,1.35cqi,7px);box-shadow:0 0 0 1px #615170,0 14px 38px #0a07136e}
+.wheel-frame-large .wheel-viewport{box-shadow:0 0 0 1px #615170,0 14px 38px #0a07136e}
+.wheel-frame-large .wheel-disc{position:relative;border-width:clamp(3px,1.35cqi,7px)}
 .wheel-frame-large .wheel-pointer{top:-14px;color:#fff2b4;font-size:clamp(26px,7cqi,38px);line-height:1}
 .wheel-frame-large .wheel-hub{width:18cqi;height:18cqi;font-size:8cqi;border-width:2px;z-index:1}
 .wheel-field{position:absolute;left:50%;top:50%;width:35cqi;text-align:center;color:#181321;font:800 clamp(9px,3cqi,16px)/1.08 "Space Grotesk",system-ui;transform:translate(-50%,-50%) rotate(var(--field-angle)) translateX(29cqi) rotate(var(--field-flip,0deg));white-space:nowrap}
