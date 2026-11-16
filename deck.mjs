@@ -15,18 +15,7 @@ export const pools = [
 export const monthTarget = 12;
 export const monthBonus = 100;
 export { wheel } from './supabase/functions/_shared/wheel.mjs';
-export function exercisePoints(exercise, quantity) {
- const {target,step}=exercise;
- if(exercise.goalPoints){
-  const base=Math.floor(Math.min(quantity,target)*exercise.goalPoints/target);
-  const bonus=Math.floor(Math.min(Math.max(quantity-target,0),target)*exercise.goalPoints/(4*target));
-  return Math.min(75,base+bonus);
- }
- const base=Math.floor(Math.min(quantity,target)/step);
- const extra=Math.min(Math.max(quantity-target,0),target);
- const bonus=Math.min(Math.floor(extra/(4*step)),Math.floor(base/4));
- return base+bonus;
-}
+export { exercisePoints } from './scoring.mjs';
 export function schedule(now = new Date()) {
  const day = new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
  const monday = new Date(day+'T00:00:00Z');

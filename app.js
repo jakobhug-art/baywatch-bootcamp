@@ -2,6 +2,8 @@ import { createScratchTicket } from './scratch-ticket.mjs';
 import { setupGroupChat } from './group-chat.mjs';
 import { setupInstallableApp } from './pwa.mjs';
 import { wheel, wheelSegments } from './wheel.mjs';
+import { exercisePoints } from './scoring.mjs';
+import { setupProfile } from './profile.mjs';
 
 const $ = selector => document.querySelector(selector);
 function showCoins(element,amount,suffix=''){
@@ -121,15 +123,6 @@ function updateStopwatchControls(){
  updateStopwatch();
 }
 
-function estimatedPoints(card,amount){
- const extra=Math.min(Math.max(amount-card.target,0),card.target);
- if(card.goalPoints){
-  return Math.min(75,Math.floor(Math.min(amount,card.target)*card.goalPoints/card.target)
-   +Math.floor(extra*card.goalPoints/(4*card.target)));
- }
- return Math.floor(Math.min(amount,card.target)/card.step)+Math.floor(extra/(4*card.step));
-}
-
 function rates(card){
  const normal=(card.goalPoints?card.goalPoints/card.target:1/card.step)*amountScale(card.unit);
  return [rateFormat.format(normal),rateFormat.format(card.goalPoints===75?0:normal/4)];
@@ -140,7 +133,7 @@ function visibleAmounts(){
  for(const entry of quantityQueue.values()){
   if(entry.day===state.deck.day && entry.owner===state.user?.id){
    const card=state.deck.daily.find(item=>item.id===entry.id);
-   if(card) amounts.set(card.id,{amount:entry.amount,points:estimatedPoints(card,entry.amount)});
+   if(card) amounts.set(card.id,{amount:entry.amount,points:exercisePoints(card,entry.amount)});
   }
  }
  return amounts;
@@ -151,7 +144,7 @@ function renderDaySummary(amounts){
  const wheelPoints=spins.reduce((sum,spin)=>sum+(spin.completed?spin.reward:spin.initial),0);
  const rest=Boolean(coins?.rest);
  const counted=deck.daily.filter(item=>item.id!==state.skippedExercise);
- const points=counted.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?estimatedPoints(item,item.target):0),wheelPoints+photoBonus);
+ const points=counted.reduce((sum,item)=>sum+Math.max(amounts.get(item.id)?.points||0,rest?exercisePoints(item,item.target):0),wheelPoints+photoBonus);
  const reached=rest?counted.length:counted.filter(item=>(amounts.get(item.id)?.amount||0)>=item.target).length;
  $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+counted.length+' Ziele')+' · '+points+' P';
  const workout=$('#workout-summary');
@@ -161,12 +154,12 @@ function renderDaySummary(amounts){
  let earnedBonus=0;
  let availableBonus=0;
  for(const card of counted){
-  const base=estimatedPoints(card,card.target);
+  const base=exercisePoints(card,card.target);
   const earned=Math.max(amounts.get(card.id)?.points||0,rest?base:0);
   earnedBase+=Math.min(earned,base);
   availableBase+=base;
   earnedBonus+=Math.max(0,earned-base);
-  availableBonus+=estimatedPoints(card,card.target*2)-base;
+  availableBonus+=exercisePoints(card,card.target*2)-base;
  }
  $('#workout-base').textContent=earnedBase+' / '+availableBase+' P';
  $('#workout-bonus').textContent=earnedBonus+' / '+availableBonus+' P';
@@ -844,7 +837,7 @@ async function change(path,payload,focusSelector) {
 
 function updateQuantityCard(form,card,amount){
  const tile=form.closest('.card');
- tile.querySelector('.points').textContent=estimatedPoints(card,amount)+' P';
+ tile.querySelector('.points').textContent=exercisePoints(card,amount)+' P';
  tile.querySelector('progress').value=Math.min(amount,card.target);
  tile.querySelector('.progress-label').textContent=displayAmount(amount,card.unit)+' / '+displayAmount(card.target,card.unit)+' '+displayUnit(card.unit)+(amount>=card.target?' · ✓':'');
  renderDaySummary(visibleAmounts());
@@ -885,7 +878,7 @@ async function flushQuantity(key,entry){
    playTrainingVoices(result.voiceIds,entry.owner);
    if(state.deck.day===entry.day && state.user?.id===entry.owner){
     const card=state.deck.daily.find(item=>item.id===entry.id);
-    if(card) state.quantities=[...state.quantities.filter(item=>item.exercise!==entry.id),{exercise:entry.id,amount,points:estimatedPoints(card,amount)}];
+    if(card) state.quantities=[...state.quantities.filter(item=>item.exercise!==entry.id),{exercise:entry.id,amount,points:exercisePoints(card,amount)}];
    }
   } while(entry.amount!==amount);
  } catch(error){
@@ -1569,10 +1562,10 @@ function showChallengeRates(){
   $('#challenge-rate').textContent='';
   return;
  }
- const card={target,goalPoints};
+ const card={target,goalPoints,unit:fields.unit.value};
  const [normal,bonus]=rates(card);
  const unit={m:'Kilometer','Sek.':'Sekunde'}[fields.unit.value]??'Wiederholung';
- $('#challenge-rate').textContent=normal+' Punkte pro '+unit+' · '+bonus+' Bonus-Punkte pro '+unit+' · maximal '+estimatedPoints(card,target*2)+' Punkte';
+ $('#challenge-rate').textContent=normal+' Punkte pro '+unit+' · '+bonus+' Bonus-Punkte pro '+unit+' · maximal '+exercisePoints(card,target*2)+' Punkte';
 }
 function showWeeklyPoints(){
  const fields=challengeForm.elements;
@@ -1641,89 +1634,14 @@ if(location.protocol!=='file:'){
  document.addEventListener('visibilitychange',refreshNewDay);
 }
 
-const profileForm=$('#profile-settings-form');
-const passwordForm=$('#profile-password-form');
-let profileOwner;
-let profileReady=false;
-let profileLoading=false;
-
-function setProfileFields(settings){
- const fields=profileForm.elements;
- fields.birthDate.value=settings.birthDate??'';
- fields.birthDate.max=state.deck.day;
- fields.showBirthday.checked=settings.showBirthday;
- fields.workoutReminders.checked=settings.workoutReminders;
- fields.friendNotifications.checked=settings.friendNotifications;
- fields.reminderTime.value=settings.reminderTime;
- const known=settings.birthdayMonthDay?.split('-').reverse().join('.');
- setError('#profile-known-birthday',known&&!settings.birthDate?'Dein Geburtstag am '+known+'. ist bereits hinterlegt.':'');
-}
-
-async function syncProfile(){
- const owner=cloudUrl?state?.user?.id:undefined;
- $('#profile-nav').hidden=!owner;
- if(owner!==profileOwner){
-  profileOwner=owner;
-  profileReady=profileLoading=false;
-  profileForm.hidden=true;
-  profileForm.reset();
-  passwordForm.reset();
-  setError('#profile-password-status');
-  setError('#profile-status');
- }
- if(!owner||currentView!=='profil'||profileReady||profileLoading) return;
- profileLoading=true;
- setError('#profile-status','Profil wird geladen …');
- try{
-  const settings=await api('profile');
-  if(profileOwner!==owner) return;
-  setProfileFields(settings);
-  $('#profile-handle').textContent=state.user.handle;
-  profileReady=true;
-  profileForm.hidden=false;
-  setError('#profile-status');
- }catch(error){if(profileOwner===owner) setError('#profile-status',error.message);}
- finally{if(profileOwner===owner) profileLoading=false;}
-}
-
-profileForm.addEventListener('submit',async event=>{
- event.preventDefault();
- if(busy||!profileReady||!profileOwner) return;
- const owner=profileOwner;
- const fields=profileForm.elements;
- const button=profileForm.querySelector('[type="submit"]');
- busy=button.disabled=true;
- setError('#profile-status');
- try{
-  await api('profile',{birthDate:fields.birthDate.value||null,showBirthday:fields.showBirthday.checked,
-   workoutReminders:fields.workoutReminders.checked,friendNotifications:fields.friendNotifications.checked,reminderTime:fields.reminderTime.value});
-  if(profileOwner!==owner) return;
-  setError('#profile-status','Einstellungen gespeichert.');
-  await refresh().catch(error=>setError('#notice',error.message));
- }catch(error){if(profileOwner===owner) setError('#profile-status',error.message);}
- finally{busy=button.disabled=false;}
+const profile=setupProfile({
+ api,refresh,saveSession:saveCloudSession,setStatus:setError,
+ isBusy:()=>busy,setBusy:value=>{busy=value;}
 });
 
-passwordForm.addEventListener('submit',async event=>{
- event.preventDefault();
- if(busy||!profileOwner) return;
- const {currentPassword,newPassword,confirmPassword}=passwordForm.elements;
- if(newPassword.value!==confirmPassword.value){
-  setError('#profile-password-status','Die neuen Passwörter stimmen nicht überein.');
-  confirmPassword.focus();
-  return;
- }
- const button=passwordForm.querySelector('[type="submit"]');
- busy=button.disabled=true;
- setError('#profile-password-status');
- try{
-  const result=await api('profile/password',{currentPassword:currentPassword.value,newPassword:newPassword.value});
-  passwordForm.reset();
-  if(result.access_token) saveCloudSession(result);
-  setError('#profile-password-status',result.changed?'Passwort geändert. Verwende bei der nächsten Anmeldung dein neues Passwort.':'Passwort geändert.');
- }catch(error){setError('#profile-password-status',error.message);}
- finally{busy=button.disabled=false;}
-});
+function syncProfile(){
+ profile(cloudUrl?state?.user:null,state?.deck?.day,currentView==='profil');
+}
 
 $('#points-reset').addEventListener('submit',async event=>{
  event.preventDefault();

@@ -1,4 +1,5 @@
 import {copyFileSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {browserModules} from '../browser-modules.mjs';
 
 const url=process.env.BOOTCAMP_SUPABASE_URL;
 const key=process.env.BOOTCAMP_PUBLISHABLE_KEY;
@@ -35,10 +36,12 @@ for(const oldPortrait of ['bootcamp-portrait.jpg','bootcamp-portrait-2.jpg']){
  rmSync('dist/'+oldPortrait,{force:true});
 }
 writeFileSync('dist/index.html',html);
-for(const asset of ['app.js','media-admin.mjs']){
- const script=readFileSync(asset,'utf8').replaceAll(/(\.\/(?:media-admin|season-media|voice-media|scratch-ticket|group-chat|pwa|wheel)\.mjs)(?=['"])/g,'$1?v='+version);
+for(const [asset,sourceFile] of Object.entries(browserModules)){
+ const script=readFileSync(sourceFile,'utf8').replaceAll(/(['"])(\.\/([\w-]+\.mjs))\1/g,(literal,quote,path,module)=>{
+  if(!Object.hasOwn(browserModules,module)) throw new Error(`${asset} imports an unpublished module: ${module}`);
+  return `${quote}${path}?v=${version}${quote}`;
+ });
  writeFileSync('dist/'+asset,script);
 }
-for(const asset of ['style.css','season-media.mjs','voice-media.mjs','scratch-ticket.mjs','group-chat.mjs','pwa.mjs','app.webmanifest','bootcamp-192.png','bootcamp-512.png']) copyFileSync(asset,'dist/'+asset);
+for(const asset of ['style.css','app.webmanifest','bootcamp-192.png','bootcamp-512.png']) copyFileSync(asset,'dist/'+asset);
 writeFileSync('dist/sw.js',readFileSync('sw.js','utf8').replace('__BOOTCAMP_VERSION__',version));
-copyFileSync('supabase/functions/_shared/wheel.mjs','dist/wheel.mjs');

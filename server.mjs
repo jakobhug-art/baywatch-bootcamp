@@ -7,6 +7,7 @@ import { drawScratchValues, drawWheelSlot, wheel } from './supabase/functions/_s
 import { setupCoins } from './coins.mjs';
 import { setupChallenges } from './challenges.mjs';
 import { setupRankings, seasonStart } from './rankings.mjs';
+import { browserModules } from './browser-modules.mjs';
 
 const db = new DatabaseSync(process.env.REPDECK_DB || 'repdeck.sqlite');
 db.exec(`
@@ -88,11 +89,8 @@ if(process.argv[2]==='--grant-admin'){
  process.exit(0);
 }
 const hash = value => createHash('sha256').update(value).digest('hex');
-const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']],
- ['/media-admin.mjs',['media-admin.mjs','text/javascript']],['/season-media.mjs',['season-media.mjs','text/javascript']],
- ['/voice-media.mjs',['voice-media.mjs','text/javascript']],['/scratch-ticket.mjs',['scratch-ticket.mjs','text/javascript']],
- ['/group-chat.mjs',['group-chat.mjs','text/javascript']],['/pwa.mjs',['pwa.mjs','text/javascript']],
- ['/wheel.mjs',['supabase/functions/_shared/wheel.mjs','text/javascript']]]);
+const assets = new Map([['/',['index.html','text/html']],['/style.css',['style.css','text/css']],
+ ...Object.entries(browserModules).map(([name,source])=>['/'+name,[source,'text/javascript']])]);
 const attempts = new Map();
 const resetAttempts = new Map();
 const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';

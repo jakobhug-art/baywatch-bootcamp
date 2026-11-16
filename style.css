@@ -285,6 +285,7 @@ form .challenge-enabled input{width:auto}
 .today-heading .pill{align-self:center}
 .home-hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:18px clamp(18px,5vw,62px);margin-top:24px;padding:clamp(16px,4vw,32px);border:1px solid #39314d;border-radius:20px;background:radial-gradient(ellipse at 85% 40%,#392451,#1a1925 70%)}
 .home-hero h1{max-width:10ch;font-size:clamp(36px,6vw,68px);letter-spacing:-.06em}
+.home-tagline{margin:9px 0 0;color:var(--muted);font-weight:600}
 .today-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .today-links a,.app-install .section-heading a{display:inline-flex;align-items:center;min-height:44px}
 .app-install .section-heading{align-items:start}

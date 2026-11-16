@@ -46,6 +46,7 @@ In Docker lautet der Befehl `docker exec <containername> node server.mjs --grant
 
 Die aktuellen Spielregeln für die veröffentlichte App stehen im Info-Bereich. Für den Wochenpool und die Wochenpunkte ist Supabase maßgeblich. Die Funktion `bootcamp_private.weekly_points` definiert die Staffel. Katalog und Admin-Editor verwenden sie, und die Oberfläche liest die Werte aus dem aktuellen Spielstand. Bereits ausgeloste Wochen und verbuchte Punkte sind als eigene Daten gespeichert.
 
-- `app.js` verbindet die App-Ansichten mit der API. `media-admin.mjs` verwaltet die ZIP-Sicherungen und das anschließende Löschen. `season-media.mjs` erstellt ZIP-Dateien und verkleinert Workout-Fotos.
+- `app.js` verbindet die App-Ansichten mit der API. `profile.mjs` verwaltet die Profileinstellungen und den Passwortwechsel. `scoring.mjs` enthält die gemeinsame Punkteberechnung für die Vorschau und den lokalen Node-Server. Online berechnet Supabase die verbindliche Wertung.
+- `media-admin.mjs` verwaltet die ZIP-Sicherungen und das anschließende Löschen. `season-media.mjs` erstellt ZIP-Dateien und verkleinert Workout-Fotos.
 - Neue Änderungen für Supabase gehören in eine neue Migration. Der lokale SQLite-Modus hat einen eigenen Aufgabenkatalog in `challenges.mjs` und deckt einen Teil der Online-Funktionen ab.
-- Der Pages-Build versieht die JavaScript-Dateien und ihre Modulimporte mit der App-Version aus der Fußzeile.
+- `browser-modules.mjs` listet die JavaScript-Module für den lokalen Server und den Pages-Build. Pages versieht die Modulimporte mit der App-Version aus der Fußzeile. Ergänze bei einem neuen Modul auch die Dateiliste im `Dockerfile`.
