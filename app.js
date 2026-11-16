@@ -1,5 +1,6 @@
 import { createScratchTicket } from './scratch-ticket.mjs';
 import { setupGroupChat } from './group-chat.mjs';
+import { setupInstallableApp } from './pwa.mjs';
 
 const $ = selector => document.querySelector(selector);
 function showCoins(element,amount,suffix=''){
@@ -180,6 +181,42 @@ function renderDaySummary(amounts){
 
 const cloudUrl = document.querySelector('meta[name="bootcamp-api"]')?.content;
 const cloudKey = document.querySelector('meta[name="bootcamp-key"]')?.content;
+const views=[...document.querySelectorAll('[data-view]')];
+const viewLinks=[...document.querySelectorAll('[data-nav-view]')];
+const moreNav=$('#more-nav');
+let currentView;
+let currentAnchor;
+
+function showView(){
+ if(!state?.user) return;
+ const anchor=location.hash.slice(1);
+ const view=({woche:'ziele',monat:'ziele','challenge-admin':'admin','workout-gallery':'galerie','scratch-area':'gluecksrad'}[anchor]??anchor);
+ const allowed=view!=='admin'||state.user.admin;
+ const next=allowed&&(view!=='fettstrafe'||cloudUrl)&&views.some(panel=>panel.dataset.view===view)?view:'heute';
+ for(const panel of views) panel.hidden=panel.dataset.view!==next;
+ for(const link of viewLinks){
+  if(link.dataset.navView===next) link.setAttribute('aria-current','page');
+  else link.removeAttribute('aria-current');
+ }
+ moreNav.classList.toggle('active',Boolean(moreNav.querySelector('[aria-current="page"]')));
+ $('#admin-nav').hidden=!state.user.admin;
+ if(currentView!==next){
+  const previous=currentView;
+  currentView=next;
+  if(previous) window.scrollTo({top:0,behavior:'instant'});
+  if(next==='galerie') syncPortraits();
+ }
+ if(anchor!==currentAnchor&&(anchor==='monat'||anchor==='scratch-area')) document.getElementById(anchor).scrollIntoView({block:'start'});
+ currentAnchor=anchor;
+}
+
+window.addEventListener('hashchange',()=>{moreNav.open=false;showView();});
+moreNav.addEventListener('click',event=>{if(event.target.closest('a')) moreNav.open=false;});
+document.addEventListener('click',event=>{if(moreNav.open&&!moreNav.contains(event.target)) moreNav.open=false;});
+moreNav.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&moreNav.open){moreNav.open=false;moreNav.querySelector('summary').focus();}
+});
+if(cloudUrl) setupInstallableApp(()=>busy||quantityQueue.size>0);
 const sessionKey = 'baywatch-bootcamp-session';
 let cloudSession = null;
 let sessionStorageSource;
@@ -534,6 +571,8 @@ function renderWheel(unlocked){
  wheelAction.textContent=pending?'Aufgabe erledigt':bonus?'Bonusdreh nutzen':'Rad drehen';
  $('#wheel-lock').hidden=$('#wheel-dialog-lock').hidden=Boolean(unlocked || pending || wheelAction.hidden);
  $('#wheel-scratch-link').hidden=!(state.scratchTickets??[]).some(ticket=>ticket.day===state.deck.day&&!ticket.claimed);
+ $('#today-wheel').textContent=!$('#wheel-scratch-link').hidden?'Rubbellos freirubbeln':unlocked&&!wheelAction.hidden?'Glücksrad bereit':'Glücksrad';
+ $('#today-wheel').href=$('#wheel-scratch-link').hidden?'#gluecksrad':'#scratch-area';
 }
 
 function prankDisplayName(handle,id){
@@ -721,7 +760,7 @@ function syncPortraits(){
   portraitLoad=owner?{owner,pending:new Set(),ready:new Set()}:undefined;
   portraitRetry.hidden=true;
  }
- if(!portraitLoad || portraitLoad.ready.size===portraits.length) return;
+ if(currentView!=='galerie'||!portraitLoad || portraitLoad.ready.size===portraits.length) return;
  portraitRetry.hidden=true;
  portraits.forEach(portrait=>loadPortrait(portrait,portraitLoad));
 }
@@ -745,6 +784,8 @@ async function refresh() {
  for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
  $('#sign-in-panel').hidden=signedIn;
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
+ if(signedIn) showView();
+ else {currentView=currentAnchor=undefined;moreNav.open=false;}
  syncPortraits();
  renderScratchTickets();
  syncGroupChat(cloudUrl?state.user:null);
@@ -1683,7 +1724,10 @@ photoForm.addEventListener('submit',async event=>{
   }
   await refresh();
   photoDialog.close();
-  if(!confirmNoPhoto && galleryVisible) loadGallery();
+  if(!confirmNoPhoto){
+   if(galleryVisible) loadGallery();
+   else galleryPhotos=undefined;
+  }
  }catch(error){
   setError('#workout-photo-status',error.message);
  }finally{

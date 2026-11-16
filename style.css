@@ -23,13 +23,10 @@ nav a:hover{color:var(--lime)}
 .outline:hover{border-color:var(--muted)}
 .primary{display:inline-flex;align-items:center;justify-content:center;gap:14px;background:var(--lime);color:#171c0a;border-color:transparent;padding:11px 17px}
 .primary:hover{background:#e7ffa3}
-.hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:1.4fr 1fr;align-items:center;min-height:345px;margin-top:28px;border:1px solid #343047;border-radius:24px;background:radial-gradient(ellipse at 80% 60%,#342350 0%,#21192f 38%,#1b1925 71%);padding:38px 44px}
-.hero-copy{z-index:1}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.19em;margin:0 0 9px;color:#d6cee8}
 h1,h2,h3{font-family:"Space Grotesk",system-ui,sans-serif;margin:0;line-height:1.06}
 h1{font-size:clamp(39px,6.2vw,76px);letter-spacing:-.075em}
 h1 em{color:var(--lime);font-style:normal}
-.hero-copy>p:not(.eyebrow){color:#d0cad9;margin:16px 0 21px}
 .section{margin-top:37px}
 .section-heading{display:flex;align-items:end;justify-content:space-between;gap:14px}
 h2{font-size:clamp(27px,4vw,36px);letter-spacing:-.045em}
@@ -113,8 +110,6 @@ form input{width:100%;border:1px solid var(--line);border-radius:8px;background:
 @media(max-width:650px){
  .shell{width:calc(100% - 28px)}.top-inner{height:auto;min-height:64px;flex-wrap:wrap;padding-block:10px;gap:10px}
  nav{order:3;justify-content:space-between;width:100%;gap:8px;padding:4px 0}
- .hero{padding:24px 19px;min-height:286px;margin-top:15px;grid-template-columns:1fr}
- .hero-copy{max-width:84%}.hero-copy>p:not(.eyebrow){max-width:230px}
  .daily{grid-template-columns:repeat(2,minmax(0,1fr))}.weekly,.lower{grid-template-columns:1fr}
  .section{margin-top:27px}.card{padding:12px}.weekly .hint{min-height:0}
  .pill{padding:5px 7px}.lower{gap:0}
@@ -266,29 +261,47 @@ form .challenge-enabled input{width:auto}
 .info-card summary{cursor:pointer;font-weight:700}
 .info-card p,.info-card li,#challenge-rate{color:var(--muted)}
 .info-card a{text-decoration:underline}
-.top nav{align-items:center;flex-wrap:nowrap;gap:clamp(10px,1.8vw,24px)}
-.top nav a{white-space:nowrap}
+.top nav{align-items:center;gap:4px;font-size:15px}
+.top nav>a,#chat-open,.more-nav>summary{display:flex;align-items:center;justify-content:center;gap:3px;min-height:44px;padding:5px 10px;border-radius:8px;color:var(--muted);font-weight:700;text-align:center}
+.top nav [aria-current="page"],.more-nav.active>summary{color:var(--lime);background:#252c20}
+.top nav a:hover,#chat-open:hover,.more-nav>summary:hover{color:var(--lime)}
+.more-nav{position:relative}
+.more-nav>summary{list-style:none;cursor:pointer}
+.more-nav>summary::-webkit-details-marker{display:none}
+.more-links{position:absolute;right:0;top:calc(100% + 6px);z-index:5;display:grid;width:min(208px,calc(100vw - 28px));padding:5px;background:#211f2d;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 36px #0a0912c0}
+.more-links a{display:flex;align-items:center;min-height:44px;padding:7px 11px;border-radius:8px}
+.today-heading{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.today-heading h1{font-size:clamp(29px,6vw,52px);letter-spacing:-.055em}
+.today-heading .pill{align-self:center}
+.today-links{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.today-links a,.app-install .section-heading a{display:inline-flex;align-items:center;min-height:44px}
+.app-install .section-heading{align-items:start}
+.app-update{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding:8px 12px;border:1px solid var(--lime);border-radius:10px;background:#252c20}
+.app-update p{margin:0}
 .header-brand,#account{flex:none}
-.hero{gap:clamp(20px,5vw,70px)}
 .hero-portrait{position:relative;isolation:isolate;justify-self:end;width:min(100%,390px);height:290px;padding:8px;border-radius:24px;background:linear-gradient(145deg,var(--pink),var(--purple) 45%,var(--lime));box-shadow:0 18px 42px #130e29}
 .hero-portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 9%;border-radius:17px}
 .hero-dumbbell{position:absolute;right:-15px;bottom:19px;width:88px;height:66px;border:2px solid var(--lime);border-radius:16px;background:#221936;transform:rotate(-14deg);box-shadow:0 8px 22px #140c24}
 .hero-dumbbell::before{content:'';position:absolute;inset:15px 13px;background:var(--lime);clip-path:polygon(0 29%,13% 29%,13% 4%,29% 4%,29% 43%,71% 43%,71% 4%,87% 4%,87% 29%,100% 29%,100% 71%,87% 71%,87% 96%,71% 96%,71% 57%,29% 57%,29% 96%,13% 96%,13% 71%,0 71%)}
 @media(max-width:1050px){
  .top-inner{height:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;padding-block:12px 9px;gap:8px 16px}
- .top nav{grid-column:1/-1;grid-row:2;width:100%;justify-content:flex-start;overflow-x:auto;scrollbar-width:thin;padding:4px 2px}
+ .top nav{grid-column:1/-1;grid-row:2;justify-content:flex-start}
  #account{grid-column:2;grid-row:1}
 }
 @media(max-width:650px){
- .hero{gap:22px}
- .hero-copy,.hero-copy>p:not(.eyebrow){max-width:none}
+ .top-inner{column-gap:6px}
+ .top nav{display:grid;grid-template-columns:1fr 1fr 1.26fr 1fr 1fr;align-items:stretch;gap:2px;font-size:15px}
+ .top nav>a,#chat-open,.more-nav>summary{padding-inline:2px}
+ .top nav>a:nth-child(3){letter-spacing:-.025em}
+ .top nav:has(#chat-open[hidden]){grid-template-columns:repeat(4,minmax(0,1fr))}
+ .today-heading{gap:8px}
  .hero-portrait{justify-self:center;width:min(100%,390px);height:clamp(224px,69vw,290px)}
  .hero-dumbbell{right:-6px;bottom:12px;width:73px;height:58px}
 }
 .hero-portrait{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:6px}
 .hero-portrait img{min-width:0;min-height:0}
 .hero-portrait img:nth-child(2){object-position:42% 67%}
-.hero-users{margin:0;width:min(100%,390px);justify-self:end;text-align:center}
+.hero-users{margin:24px 0 0;width:min(100%,390px);text-align:center}
 .hero-users figcaption{margin-top:12px;color:var(--muted);font-size:.875rem}
 .portrait-retry{margin-top:10px}
 @media(max-width:650px){.hero-users{justify-self:center}}

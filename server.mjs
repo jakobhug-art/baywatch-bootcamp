@@ -91,7 +91,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']],
  ['/media-admin.mjs',['media-admin.mjs','text/javascript']],['/season-media.mjs',['season-media.mjs','text/javascript']],
  ['/voice-media.mjs',['voice-media.mjs','text/javascript']],['/scratch-ticket.mjs',['scratch-ticket.mjs','text/javascript']],
- ['/group-chat.mjs',['group-chat.mjs','text/javascript']]]);
+ ['/group-chat.mjs',['group-chat.mjs','text/javascript']],['/pwa.mjs',['pwa.mjs','text/javascript']]]);
 const attempts = new Map();
 const resetAttempts = new Map();
 const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
