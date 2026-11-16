@@ -190,9 +190,10 @@ let currentAnchor;
 function showView(){
  if(!state?.user) return;
  const anchor=location.hash.slice(1);
- const view=({woche:'ziele',monat:'ziele','challenge-admin':'admin','workout-gallery':'galerie','scratch-area':'gluecksrad'}[anchor]??anchor);
+ const target=document.getElementById(anchor==='galerie'?'workout-gallery':anchor);
+ const view=target?.closest('[data-view]')?.dataset.view??'heute';
  const allowed=view!=='admin'||state.user.admin;
- const next=allowed&&(view!=='fettstrafe'||cloudUrl)&&views.some(panel=>panel.dataset.view===view)?view:'heute';
+ const next=allowed&&(view!=='fettstrafe'||cloudUrl)?view:'heute';
  for(const panel of views) panel.hidden=panel.dataset.view!==next;
  for(const link of viewLinks){
   if(link.dataset.navView===next) link.setAttribute('aria-current','page');
@@ -200,17 +201,18 @@ function showView(){
  }
  moreNav.classList.toggle('active',Boolean(moreNav.querySelector('[aria-current="page"]')));
  $('#admin-nav').hidden=!state.user.admin;
- if(currentView!==next){
-  const previous=currentView;
-  currentView=next;
-  if(previous) window.scrollTo({top:0,behavior:'instant'});
-  if(next==='galerie') syncPortraits();
+ if(currentView!==next||anchor!==currentAnchor){
+  if(next==='heute'&&target&&target.id!=='start'&&!target.hidden&&view===next){
+   target.scrollIntoView({block:'start'});
+  }else if(currentView||anchor){
+   window.scrollTo({top:0,behavior:'instant'});
+  }
  }
- if(anchor!==currentAnchor&&(anchor==='monat'||anchor==='scratch-area')) document.getElementById(anchor).scrollIntoView({block:'start'});
+ currentView=next;
  currentAnchor=anchor;
 }
 
-window.addEventListener('hashchange',()=>{moreNav.open=false;showView();});
+window.addEventListener('hashchange',()=>{moreNav.open=false;showView();syncPortraits();});
 moreNav.addEventListener('click',event=>{if(event.target.closest('a')) moreNav.open=false;});
 document.addEventListener('click',event=>{if(moreNav.open&&!moreNav.contains(event.target)) moreNav.open=false;});
 moreNav.addEventListener('keydown',event=>{
@@ -754,13 +756,13 @@ async function loadPortrait(portrait,load){
 }
 
 function syncPortraits(){
- const owner=state.user?.id;
+ const owner=state?.user?.id;
  if(owner!==portraitLoad?.owner){
   portraits.forEach(clearPortrait);
   portraitLoad=owner?{owner,pending:new Set(),ready:new Set()}:undefined;
   portraitRetry.hidden=true;
  }
- if(currentView!=='galerie'||!portraitLoad || portraitLoad.ready.size===portraits.length) return;
+ if(currentView!=='heute'||!portraitLoad || portraitLoad.ready.size===portraits.length) return;
  portraitRetry.hidden=true;
  portraits.forEach(portrait=>loadPortrait(portrait,portraitLoad));
 }
@@ -784,17 +786,17 @@ async function refresh() {
  for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
  $('#sign-in-panel').hidden=signedIn;
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
- if(signedIn) showView();
- else {currentView=currentAnchor=undefined;moreNav.open=false;}
- syncPortraits();
  renderScratchTickets();
  syncGroupChat(cloudUrl?state.user:null);
  syncFoodPolls();
- if(signedIn) render();
+ if(signedIn){render();showView();}
  else{
+  currentView=currentAnchor=undefined;
+  moreNav.open=false;
   renderCoins();
   if(hadCloudSession && !cloudSession) setError('#notice','Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.');
  }
+ syncPortraits();
  syncReportAccount();
 }
 

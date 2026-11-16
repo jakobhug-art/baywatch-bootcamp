@@ -11,18 +11,14 @@
 </head>
 <body>
  <header class="top"><div class="shell top-inner">
-  <a href="#heute" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small data-member hidden>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
+  <a href="#start" class="brand header-brand"><span class="brand-icon" aria-hidden="true">▰</span><span class="brand-copy">Baywatch Bootcamp<small data-member hidden>Für Jonis Sexy Knackarsch und Sixpack</small></span></a>
   <nav aria-label="Hauptnavigation" data-member hidden>
-   <a href="#heute" data-nav-view="heute">Heute</a>
-   <a href="#woche" data-nav-view="ziele">Ziele</a>
-   <a href="#rangliste" data-nav-view="rangliste">Rangliste</a>
+   <a href="#start" data-nav-view="heute">Startseite</a>
+   <a href="#muenzen" data-nav-view="muenzen">Münzen &amp; Pranks</a>
    <button id="chat-open" type="button" aria-haspopup="dialog" hidden>Chat</button>
    <details class="more-nav" id="more-nav">
     <summary>Mehr <span aria-hidden="true">⌄</span></summary>
     <div class="more-links">
-     <a href="#gluecksrad" data-nav-view="gluecksrad">Glücksrad</a>
-     <a href="#muenzen" data-nav-view="muenzen">Münzkonto</a>
-     <a href="#galerie" data-nav-view="galerie">Galerie</a>
      <a href="#fettstrafe" id="food-polls-link" data-nav-view="fettstrafe" hidden>Fettstrafe</a>
      <a href="#info" data-nav-view="info">So funktioniert’s</a>
      <a href="#feedback" data-nav-view="feedback">Bugs &amp; Ideen</a>
@@ -47,22 +43,46 @@
   <p>Melde dich an oder erstelle mit deinem Einladungscode ein Konto.</p>
  </section>
  <main class="shell" data-member hidden>
-  <div data-view="heute">
+  <div data-view="heute" id="start">
   <aside class="panel birthday-banner" id="jonas-birthday" aria-label="Geburtstagsgruß" hidden>
    <strong>Alles Gute zum Geburtstag, Jonas! 🎉</strong>
    <p>Heute zählt jede Wiederholung. Und jedes Stück Kuchen auch. 😉</p>
   </aside>
+  <section class="home-hero" aria-labelledby="home-title">
+   <div class="home-hero-copy">
+    <h1 id="home-title">Jede Wiederholung <em>zählt.</em></h1>
+    <div class="today-links"><a class="primary" href="#heute">Zum Workout</a><a class="outline" href="#gluecksrad" id="today-wheel">Glücksrad</a></div>
+   </div>
+   <figure class="hero-users">
+    <div class="hero-portrait">
+     <img data-portrait="1" width="1080" height="1920" alt="Porträt eines lächelnden Bootcamp-Mitglieds">
+     <img data-portrait="2" width="1152" height="2048" alt="Porträt eines Bootcamp-Mitglieds mit Peace-Zeichen">
+     <span class="hero-dumbbell" aria-hidden="true"></span>
+    </div>
+    <figcaption>So sehen glückliche Nutzer der App aus 😉</figcaption>
+    <button class="outline portrait-retry" type="button" id="portrait-retry" hidden>Fotos erneut laden</button>
+   </figure>
+  </section>
+  <section class="section" id="workout-gallery" aria-labelledby="gallery-title" hidden>
+   <div class="section-heading gallery-heading">
+    <h2 id="gallery-title">Workout-Galerie</h2>
+    <div id="gallery-controls" class="gallery-controls" hidden>
+     <button class="outline" id="gallery-prev" type="button" aria-label="Vorherige Fotos">←</button>
+     <button class="outline" id="gallery-pause" type="button" aria-pressed="false">Pausieren</button>
+     <button class="outline" id="gallery-next" type="button" aria-label="Nächste Fotos">→</button>
+    </div>
+   </div>
+   <p id="gallery-status" role="status"></p>
+   <div class="gallery-grid" id="gallery-grid"></div>
+  </section>
   <section id="heute" class="section">
-   <div class="today-heading"><div><p class="eyebrow accent" id="date"></p><h1>Deine Tageschallenge</h1></div><span class="pill" id="daily-summary">–</span></div>
-   <div class="today-links"><a class="outline" href="#gluecksrad" id="today-wheel">Glücksrad</a><a class="outline" href="#woche">Wochen-Challenges</a></div>
+   <div class="today-heading"><div><p class="eyebrow accent" id="date"></p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
    <p class="skip-status" id="skip-status" role="status" tabindex="-1" hidden></p>
    <div id="daily" class="cards daily"></div>
    <a id="daily-extra" class="outline daily-extra" href="#muenzen" hidden></a>
    <div id="daily-extra-card" class="panel" hidden></div>
    <p id="daily-extra-status" role="status" hidden></p>
   </section>
-  </div>
-  <div data-view="gluecksrad" hidden>
   <section id="gluecksrad" class="section">
    <div class="section-heading"><h2>Glücks- & Pechrad</h2><span class="pill">Freiwillig · täglich</span></div>
    <div class="panel wheel-panel">
@@ -84,19 +104,16 @@
     <div class="scratch-list" id="scratch-list"></div>
    </div>
   </section>
-  </div>
-  <div data-view="ziele" hidden>
   <section id="woche" class="section">
    <div class="section-heading"><div><p class="eyebrow accent pink-text">ABWECHSLUNG</p><h2>Wochen-Challenges</h2></div><span class="pill" id="week-summary">–</span></div>
    <p class="sub">Drei Extras, jeden Montag ein neues Deck.</p>
    <div id="weekly" class="cards weekly"></div>
   </section>
+  <div class="lower">
    <section id="monat" class="section">
     <p class="eyebrow accent cyan-text">LANGZEITZIEL</p><h2>Monatsziel</h2>
     <div id="monthly" class="panel"></div>
    </section>
-  </div>
-  <div data-view="rangliste" hidden>
    <section id="rangliste" class="section">
     <p class="eyebrow accent">FREUNDESKREIS</p><h2>Rangliste</h2>
     <div class="panel">
@@ -112,9 +129,10 @@
     </div>
    </section>
   </div>
+  </div>
   <div data-view="muenzen" hidden>
   <section id="muenzen" class="section">
-   <div class="section-heading"><h2>Münzkonto</h2><span class="pill" id="coin-balance" hidden></span></div>
+   <div class="section-heading"><h2>Münzkonto &amp; Pranks</h2><span class="pill" id="coin-balance" hidden></span></div>
    <p class="sub">Am Glücksrad gibt es ein Goldfeld für 15 Münzen, Rubbellose und einen Gutschein für einen freien Tag.</p>
    <button class="outline" type="button" id="coin-login">Anmelden</button>
    <div id="coin-area" class="lower" hidden>
@@ -148,29 +166,6 @@
     <button class="outline" id="voice-archive-more" type="button" hidden>Ältere Aufnahmen laden</button>
    </details>
   </section>
-  </div>
-  <div data-view="galerie" id="galerie" hidden>
-   <section class="section" id="workout-gallery" aria-labelledby="gallery-title" hidden>
-    <div class="section-heading gallery-heading">
-     <h2 id="gallery-title">Workout-Galerie</h2>
-     <div id="gallery-controls" class="gallery-controls" hidden>
-      <button class="outline" id="gallery-prev" type="button" aria-label="Vorherige Fotos">←</button>
-      <button class="outline" id="gallery-pause" type="button" aria-pressed="false">Pausieren</button>
-      <button class="outline" id="gallery-next" type="button" aria-label="Nächste Fotos">→</button>
-     </div>
-    </div>
-    <p id="gallery-status" role="status"></p>
-    <div class="gallery-grid" id="gallery-grid"></div>
-   </section>
-   <figure class="hero-users section">
-    <div class="hero-portrait">
-     <img data-portrait="1" width="1080" height="1920" alt="Porträt eines lächelnden Bootcamp-Mitglieds">
-     <img data-portrait="2" width="1152" height="2048" alt="Porträt eines Bootcamp-Mitglieds mit Peace-Zeichen">
-     <span class="hero-dumbbell" aria-hidden="true"></span>
-    </div>
-    <figcaption>So sehen glückliche Nutzer der App aus 😉</figcaption>
-    <button class="outline portrait-retry" type="button" id="portrait-retry" hidden>Fotos erneut laden</button>
-   </figure>
   </div>
   <div data-view="fettstrafe" hidden>
   <section id="fettstrafe" class="section" hidden aria-labelledby="food-polls-heading">
@@ -333,7 +328,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.37</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.38</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>
