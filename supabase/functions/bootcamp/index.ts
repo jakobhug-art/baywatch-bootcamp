@@ -15,7 +15,6 @@ const audioTypes = ["audio/webm", "audio/ogg", "audio/mp4"];
 const isoDay = /^\d{4}-\d{2}-\d{2}$/;
 const voiceFiles = admin.storage.from("bootcamp-voice");
 const workoutFiles = admin.storage.from("bootcamp-workouts");
-const seasonDate = /^\d{4}-(01|03|05|07|09|11)-01$/;
 type SeasonFile = { bucket: string; path: string; filename: string };
 const cors = {
   "Access-Control-Allow-Origin": frontend,
@@ -78,7 +77,10 @@ Deno.serve(async (request) => {
         return json({ url: signed.data.signedUrl });
       }
       if (!media?.[1]) return rpc("bootcamp_media_seasons", { p_admin: data.user.id });
-      if (!seasonDate.test(media[1])) return json({ error: "Ungültige Season." }, 400);
+      const season = new Date(media[1] + "T00:00:00Z");
+      if (!Number.isFinite(season.getTime()) || season.toISOString().slice(0, 10) !== media[1]) {
+        return json({ error: "Ungültige Season." }, 400);
+      }
       const manifest = await rpc("bootcamp_prepare_media_backup", { p_admin: data.user.id, p_season: media[1] });
       if (!manifest.ok) return manifest;
       const { backupId, files }: { backupId: string; files: SeasonFile[] } = await manifest.json();

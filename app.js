@@ -1563,7 +1563,11 @@ challengeForm.addEventListener('submit',async event=>{
  finally{button.disabled=false;}
 });
 const berlinDay=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'});
+function renderBirthdayGreeting(){
+ $('#jonas-birthday').hidden=berlinDay.format(new Date())!=='2026-11-16';
+}
 async function refreshNewDay(){
+ renderBirthdayGreeting();
  if(!state?.user || busy || document.hidden || berlinDay.format(new Date())===state.deck.day) return;
  busy=true;
  try{await refresh();}
@@ -1571,6 +1575,7 @@ async function refreshNewDay(){
  finally{busy=false;}
 }
 if(location.protocol!=='file:'){
+ renderBirthdayGreeting();
  setInterval(refreshNewDay,1000);
  document.addEventListener('visibilitychange',refreshNewDay);
 }

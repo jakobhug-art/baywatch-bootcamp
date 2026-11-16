@@ -230,6 +230,9 @@ form .challenge-enabled input{width:auto}
 .header-brand small{color:var(--muted);font:600 11px/1.2 "DM Sans",system-ui,sans-serif;letter-spacing:0}
 @media(max-width:380px){.header-brand .brand-icon{display:none}.header-brand small{font-size:10px}}
 .app-version{white-space:nowrap}
+.birthday-banner{margin-bottom:14px;border-color:var(--purple);background:linear-gradient(110deg,#322044,#1b2536);padding:14px 18px}
+.birthday-banner strong{color:var(--pink);font-size:1.1rem}
+.birthday-banner p{margin:3px 0 0}
 .footer{flex-wrap:wrap}
 @media (hover:hover){
  .card:hover,.panel:hover{border-color:color-mix(in srgb,var(--tone,var(--purple)) 42%,var(--line))}
