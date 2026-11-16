@@ -1,7 +1,11 @@
 const chatDate=new Intl.DateTimeFormat('de-DE',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Berlin'});
+const pageSize=40;
+const compareIds=(a,b)=>a.length-b.length||a.localeCompare(b);
 
 export function setupGroupChat(api){
  const openers=document.querySelectorAll('[data-chat-open]');
+ const menuButton=document.querySelector('#chat-open');
+ const badge=document.querySelector('#chat-unread');
  const dialog=document.querySelector('#chat-dialog');
  const pinned=dialog.querySelector('.chat-pinned');
  const thread=dialog.querySelector('.chat-thread');
@@ -13,6 +17,7 @@ export function setupGroupChat(api){
  const input=form.elements.message;
  const send=form.querySelector('button');
  let account;
+ let unread;
  const messages=new Map();
  let firstMessage;
  let pinnedId;
@@ -21,6 +26,66 @@ export function setupGroupChat(api){
  let loadNumber=0;
  let writing=false;
  let drawn='';
+
+ function renderUnread(count){
+  badge.hidden=!count;
+  badge.textContent=count>99?'99+':count||'';
+  if(count) menuButton.setAttribute('aria-label',`Chat, ${count} ${count===1?'ungelesene Nachricht':'ungelesene Nachrichten'}`);
+  else menuButton.removeAttribute('aria-label');
+ }
+
+ function readCursor(key){
+  try{
+   const value=localStorage.getItem(key);
+   if(value&&/^\d+$/.test(value)) return value;
+  }catch{}
+ }
+
+ function markRead(id){
+  const stored=readCursor(unread.key);
+  const seen=[id,unread.seen,stored].filter(Boolean).sort(compareIds).at(-1);
+  unread.seen=unread.checked=seen;
+  unread.count=0;
+  renderUnread(0);
+  try{if(seen!==stored) localStorage.setItem(unread.key,seen);}catch{}
+ }
+
+ async function checkUnread(){
+  const current=unread;
+  if(!current||current.checking||dialog.open||document.hidden) return;
+  const checked=current.checked;
+  const handle=account.handle;
+  const isCurrent=()=>unread===current&&current.checked===checked&&!dialog.open&&!document.hidden;
+  current.checking=true;
+  try{
+   let {messages:page}=await api('chat');
+   if(!isCurrent()) return;
+   const latest=page.at(-1)?.messageId||'0';
+   if(checked===undefined){markRead(latest);return;}
+   if(compareIds(latest,checked)<=0) return;
+   let count=0;
+   while(true){
+    count+=page.filter(message=>message.author!==handle&&compareIds(message.messageId,checked)>0).length;
+    if(page.length<pageSize||compareIds(page[0].messageId,checked)<=0) break;
+    ({messages:page}=await api('chat?before='+page[0].messageId));
+    if(!isCurrent()) return;
+   }
+   current.checked=latest;
+   current.count+=count;
+   renderUnread(current.count);
+  }catch{
+   // Keep the current badge when the connection drops. The next poll retries.
+  }finally{current.checking=false;}
+ }
+
+ window.addEventListener('storage',event=>{
+  if(!unread||event.key!==unread.key||!/^\d+$/.test(event.newValue||'')) return;
+  if(unread.seen!==undefined&&compareIds(event.newValue,unread.seen)<=0) return;
+  unread.seen=unread.checked=event.newValue;
+  unread.count=0;
+  renderUnread(0);
+  if(!unread.checking) checkUnread();
+ });
 
  function showStatus(message=''){
   status.textContent=message;
@@ -50,7 +115,7 @@ export function setupGroupChat(api){
   const oldHeight=thread.scrollHeight;
   const oldTop=thread.scrollTop;
   const nearBottom=oldHeight-thread.clientHeight-oldTop<48;
-  const ordered=[...messages.values()].sort((a,b)=>a.messageId.length-b.messageId.length||a.messageId.localeCompare(b.messageId));
+  const ordered=[...messages.values()].sort((a,b)=>compareIds(a.messageId,b.messageId));
   const signature=JSON.stringify([Boolean(account.admin),announcement?.messageId,ordered.map(({messageId})=>messageId)]);
   if(signature!==drawn){
    drawn=signature;
@@ -96,9 +161,10 @@ export function setupGroupChat(api){
   try{
    const data=await api(older?'chat?before='+firstMessage:'chat');
    if(request!==loadNumber||account?.id!==owner||!dialog.open) return;
-   if(older||!messages.size) firstMessage=data.messages.length===40?data.messages[0].messageId:undefined;
+   if(older||!messages.size) firstMessage=data.messages.length===pageSize?data.messages[0].messageId:undefined;
    for(const message of data.messages) messages.set(message.messageId,message);
    render(data.pinned,{bottom,older});
+   if(!older&&!document.hidden) markRead(data.messages.at(-1)?.messageId||'0');
   }catch(error){
    if(!quiet&&request===loadNumber&&account?.id===owner) showStatus(error.message);
   }finally{if(request===loadNumber) more.disabled=false;}
@@ -109,12 +175,17 @@ export function setupGroupChat(api){
   showStatus();
   dialog.showModal();
   load({bottom:true});
-  clearInterval(timer);
-  timer=setInterval(()=>{if(!document.hidden&&!writing&&!more.disabled) load({quiet:true});},8000);
+ }
+ function refreshChat(){
+  if(!account||document.hidden) return;
+  if(!dialog.open) checkUnread();
+  else if(!writing&&!more.disabled) load({quiet:true});
  }
  for(const opener of openers) opener.addEventListener('click',openChat);
+ document.addEventListener('visibilitychange',refreshChat);
+ window.addEventListener('online',refreshChat);
  dialog.querySelector('#chat-close').addEventListener('click',()=>dialog.close());
- dialog.addEventListener('close',()=>{if(!dialog.open) clearInterval(timer);});
+ dialog.addEventListener('close',()=>{if(!dialog.open) checkUnread();});
  more.addEventListener('click',()=>load({older:true}));
  form.addEventListener('submit',async event=>{
   event.preventDefault();
@@ -138,8 +209,11 @@ export function setupGroupChat(api){
 
  return user=>{
   for(const opener of openers) opener.hidden=!user;
-  if(user?.id!==account?.id){
+  const changed=user?.id!==account?.id;
+  account=user;
+  if(changed){
    if(dialog.open) dialog.close();
+   clearInterval(timer);
    loadNumber++;
    messages.clear();
    list.replaceChildren();
@@ -149,7 +223,15 @@ export function setupGroupChat(api){
    drawn='';
    form.reset();
    showStatus();
+   unread=undefined;
+   renderUnread(0);
+   if(user){
+    const key='bootcamp-chat-read:'+user.id;
+    const seen=readCursor(key);
+    unread={key,seen,checked:seen,count:0};
+    checkUnread();
+    timer=setInterval(refreshChat,10000);
+   }
   }
-  account=user;
  };
 }

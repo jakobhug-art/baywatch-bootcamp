@@ -15,7 +15,9 @@
   <nav aria-label="Hauptnavigation" data-member hidden>
    <a href="#start" data-nav-view="heute">Startseite</a>
    <a href="#muenzen" data-nav-view="muenzen">Münzen &amp; Pranks</a>
-   <button id="chat-open" data-chat-open type="button" aria-haspopup="dialog" hidden>Chat</button>
+   <button id="chat-open" data-chat-open type="button" aria-haspopup="dialog" hidden>
+    Chat <span id="chat-unread" aria-hidden="true" hidden></span>
+   </button>
    <details class="more-nav" id="more-nav">
     <summary>Mehr <span aria-hidden="true">⌄</span></summary>
     <div class="more-links">
@@ -370,7 +372,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.42</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.43</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>
