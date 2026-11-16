@@ -105,7 +105,14 @@ Deno.serve(async (request) => {
       if (!token) return json({ user: null });
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
-      return rpc("bootcamp_training_state", { p_user: data.user.id });
+      if (new URL(request.url).searchParams.get("birthdays") !== "1") return rpc("bootcamp_training_state", { p_user: data.user.id });
+      return rpc("bootcamp_member_state", { p_user: data.user.id, p_birthday_symbols: Array.from({ length: 3 }, () => drawScratchValues(randomInt)) });
+    }
+    if (path === "/profile" && request.method === "GET") {
+      if (!token) return json({ error: "Bitte melde dich an." }, 401);
+      const { data, error } = await auth.auth.getUser(token);
+      if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+      return rpc("bootcamp_profile_settings", { p_user: data.user.id });
     }
     if (path === "/chat" && request.method === "GET") {
       const before = new URL(request.url).searchParams.get("before");
@@ -227,10 +234,41 @@ Deno.serve(async (request) => {
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
       "/wheel/spin", "/wheel/complete", "/wheel/scratch", "/workout/skip", "/food-polls", "/food-polls/vote",
-      "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members", "/chat", "/chat/pin"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
+      "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members", "/chat", "/chat/pin",
+      "/profile", "/profile/password"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
+    if (path === "/profile") {
+      if (input.birthDate !== null) {
+        if (typeof input.birthDate !== "string" || !isoDay.test(input.birthDate)) return json({ error: "Ungültiges Geburtsdatum." }, 400);
+        const birth = new Date(input.birthDate + "T00:00:00Z");
+        if (!Number.isFinite(birth.getTime()) || birth.toISOString().slice(0, 10) !== input.birthDate) {
+          return json({ error: "Ungültiges Geburtsdatum." }, 400);
+        }
+      }
+      if (typeof input.showBirthday !== "boolean" || typeof input.workoutReminders !== "boolean"
+        || typeof input.friendNotifications !== "boolean" || typeof input.reminderTime !== "string"
+        || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.reminderTime)) return json({ error: "Prüfe deine Einstellungen." }, 400);
+      return rpc("bootcamp_save_profile_settings", { p_user: data.user.id, p_birth: input.birthDate,
+        p_show: input.showBirthday, p_reminders: input.workoutReminders, p_friends: input.friendNotifications, p_time: input.reminderTime });
+    }
+    if (path === "/profile/password") {
+      const { currentPassword, newPassword } = input;
+      if (!data.user.email || typeof currentPassword !== "string" || currentPassword.length < 10 || currentPassword.length > 128
+        || typeof newPassword !== "string" || newPassword.length < 10 || newPassword.length > 128 || newPassword === currentPassword) {
+        return json({ error: "Wähle ein neues Passwort mit 10 bis 128 Zeichen." }, 400);
+      }
+      const email = data.user.email;
+      const verified = await auth.auth.signInWithPassword({ email, password: currentPassword });
+      if (verified.error?.status === 429) return json({ error: "Zu viele Versuche. Bitte warte kurz." }, 429);
+      if (verified.error || verified.data.user?.id !== data.user.id) return json({ error: "Das aktuelle Passwort stimmt nicht." }, 403);
+      const changed = await auth.auth.updateUser({ password: newPassword, current_password: currentPassword });
+      if (changed.error) return json({ error: "Das Passwort konnte nicht geändert werden." }, 400);
+      const signed = await auth.auth.signInWithPassword({ email, password: newPassword });
+      if (signed.error || !signed.data.session) return json({ changed: true });
+      return sessionResponse(signed.data.session);
+    }
     if (path === "/chat") {
       const message = typeof input.body === "string" ? input.body.trim() : "";
       if (!message || [...message].length > 1000 || message.includes("\0") || typeof input.requestId !== "string" || !uuid.test(input.requestId)) {
@@ -314,12 +352,17 @@ Deno.serve(async (request) => {
       return json({ balance: result.balance, removed: result.removed, audioCleanupPending });
     }
     if (path === "/wheel/spin" && typeof input.day === "string" && [1, 2].includes(input.turn)) {
-      const slot = drawWheelSlot(randomInt);
+      const slot = drawWheelSlot(randomInt, input.expandedWheel === true);
       return rpc("bootcamp_spin_with_ticket", { p_user: data.user.id, p_day: input.day, p_turn: input.turn,
         p_slot: slot, p_card: wheel[slot], p_values: drawScratchValues(randomInt) });
     }
-    if (path === "/wheel/scratch" && typeof input.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.day) && [1, 2].includes(input.turn)) {
-      return rpc("bootcamp_claim_scratch", { p_user: data.user.id, p_day: input.day, p_turn: input.turn });
+    if (path === "/wheel/scratch" && typeof input.day === "string" && isoDay.test(input.day)) {
+      const birthday = input.birthday === true;
+      if ((birthday ? [1, 2, 3] : [1, 2]).includes(input.turn)) {
+        return rpc(birthday ? "bootcamp_claim_birthday_ticket" : "bootcamp_claim_scratch", {
+          p_user: data.user.id, p_day: input.day, p_turn: input.turn,
+        });
+      }
     }
     if (path === "/wheel/complete" && typeof input.day === "string" && [1, 2].includes(input.turn)) {
       return rpc("bootcamp_complete_spin", { p_user: data.user.id, p_day: input.day, p_turn: input.turn });

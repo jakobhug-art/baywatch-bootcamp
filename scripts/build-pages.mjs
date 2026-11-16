@@ -36,8 +36,9 @@ for(const oldPortrait of ['bootcamp-portrait.jpg','bootcamp-portrait-2.jpg']){
 }
 writeFileSync('dist/index.html',html);
 for(const asset of ['app.js','media-admin.mjs']){
- const script=readFileSync(asset,'utf8').replaceAll(/(\.\/(?:media-admin|season-media|voice-media|scratch-ticket|group-chat|pwa)\.mjs)(?=['"])/g,'$1?v='+version);
+ const script=readFileSync(asset,'utf8').replaceAll(/(\.\/(?:media-admin|season-media|voice-media|scratch-ticket|group-chat|pwa|wheel)\.mjs)(?=['"])/g,'$1?v='+version);
  writeFileSync('dist/'+asset,script);
 }
 for(const asset of ['style.css','season-media.mjs','voice-media.mjs','scratch-ticket.mjs','group-chat.mjs','pwa.mjs','app.webmanifest','bootcamp-192.png','bootcamp-512.png']) copyFileSync(asset,'dist/'+asset);
 writeFileSync('dist/sw.js',readFileSync('sw.js','utf8').replace('__BOOTCAMP_VERSION__',version));
+copyFileSync('supabase/functions/_shared/wheel.mjs','dist/wheel.mjs');

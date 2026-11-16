@@ -1,6 +1,7 @@
 import { createScratchTicket } from './scratch-ticket.mjs';
 import { setupGroupChat } from './group-chat.mjs';
 import { setupInstallableApp } from './pwa.mjs';
+import { wheel, wheelSegments } from './wheel.mjs';
 
 const $ = selector => document.querySelector(selector);
 function showCoins(element,amount,suffix=''){
@@ -193,7 +194,7 @@ function showView(){
  const target=document.getElementById(anchor==='galerie'?'workout-gallery':anchor);
  const view=target?.closest('[data-view]')?.dataset.view??'heute';
  const allowed=view!=='admin'||state.user.admin;
- const next=allowed&&(view!=='fettstrafe'||cloudUrl)?view:'heute';
+ const next=allowed&&(!['fettstrafe','profil'].includes(view)||cloudUrl)?view:'heute';
  for(const panel of views) panel.hidden=panel.dataset.view!==next;
  for(const link of viewLinks){
   if(link.dataset.navView===next) link.setAttribute('aria-current','page');
@@ -212,7 +213,7 @@ function showView(){
  currentAnchor=anchor;
 }
 
-window.addEventListener('hashchange',()=>{moreNav.open=false;showView();syncPortraits();});
+window.addEventListener('hashchange',()=>{moreNav.open=false;showView();syncPortraits();syncProfile();});
 moreNav.addEventListener('click',event=>{if(event.target.closest('a')) moreNav.open=false;});
 document.addEventListener('click',event=>{if(moreNav.open&&!moreNav.contains(event.target)) moreNav.open=false;});
 moreNav.addEventListener('keydown',event=>{
@@ -316,13 +317,13 @@ async function api(path, payload) {
   }
   if(path==='state'){
    const token=cloudSession?.access_token;
-   try{return await cloudRequest(path,undefined,token);}
+   try{return await cloudRequest('state?birthdays=1',undefined,token);}
    catch(error){
     if(error.status!==401 || !token) throw error;
     await refreshCloudSession(token);
     const renewed=cloudSession?.access_token;
     if(!renewed) return {user:null};
-    try{return await cloudRequest(path,undefined,renewed);}
+    try{return await cloudRequest('state?birthdays=1',undefined,renewed);}
     catch(retryError){
      if(retryError.status!==401) throw retryError;
      if(readCloudSession()?.access_token===renewed) saveCloudSession(null);
@@ -467,11 +468,17 @@ const wheelAction=$('#wheel-action');
 const wheelFields=[
  ['+25 Punkte'],['+10 Punkte'],['−25 Punkte'],['−10 Punkte'],
  ['30 Liegestütze','oder −30 P'],['1 Min. Plank','für +10 P'],['6 Klimmzüge','für +15 P'],
- ['+5 Punkte','Extrarunde'],['Freier Tag','Gutschein'],['Nibbler ♥','Hugo & Joni'],['15 Münzen','Goldfeld · 1 %']
+ ['+5 Punkte','Extrarunde'],['Freier Tag','Gutschein'],['Nibbler ♥','Hugo & Joni'],['15 Münzen','Goldfeld · 1 %'],
+ ['7 Münzen'],['3 Münzen']
 ];
-const wheelLabels=wheelFields.map(([title,detail],slot)=>{
+const wheelColors=['#d8fa76','#ff8dc9','#83e9ff','#bea8ff','#ffb183','#ffe17a','#9df5c1','#fa9ea5','#d9c3ff','#ff729d','#e4a329','#ffc977','#83e4d0'];
+const gradient=wheelSegments.map(({slot,start,end})=>`${wheelColors[slot]} ${start}deg ${end}deg`).join(',');
+$('#gluecksrad').style.setProperty('--wheel-colors',`conic-gradient(from ${-wheelSegments[0].end/2}deg,${gradient})`);
+wheelDialog.style.setProperty('--wheel-colors',`conic-gradient(from ${-wheelSegments[0].end/2}deg,${gradient})`);
+const wheelLabels=wheelSegments.map(({slot,angle})=>{
+ const [title,detail]=wheelFields[slot];
  const label=document.createElement('span');
- const gold=slot===wheelFields.length-1;
+ const gold=slot===10;
  label.className=gold?'wheel-field wheel-field-gold':'wheel-field';
  label.textContent=gold?'15':title;
  if(detail&&!gold){
@@ -479,15 +486,13 @@ const wheelLabels=wheelFields.map(([title,detail],slot)=>{
   sublabel.textContent=detail;
   label.append(sublabel);
  }
- label.style.setProperty('--field-angle',wheelAngle({slot})-90+'deg');
+ label.style.setProperty('--field-angle',angle-90+'deg');
  largeWheel.append(label);
- return label;
-});
-for(const field of wheelFields){
  const item=document.createElement('li');
- item.textContent=field.join(' · ');
+ item.textContent=wheelFields[slot].join(' · ');
  $('#wheel-fields').append(item);
-}
+ return {label,angle};
+});
 let wheelUnlocked=false;
 let wheelInMotion=false;
 let scratchOwner;
@@ -504,19 +509,19 @@ function renderScratchTickets(){
  $('#scratch-area').hidden=!tickets.length;
  const keys=new Set();
  const cards=tickets.map(ticket=>{
-  const key=ticket.day+':'+ticket.turn;
+  const key=ticket.day+':'+(ticket.birthday?'birthday':'wheel')+':'+ticket.turn;
   keys.add(key);
   const cached=scratchCards.get(key);
   if(!cached || !cached.claimed&&ticket.claimed){
-   const label=ticket.turn===1?'Los zum ersten Dreh':'Los zum Bonusdreh';
+   const label=ticket.birthday?'🎂 Geburtstagslos '+ticket.turn+' / 3':ticket.turn===1?'Los zum ersten Dreh':'Los zum Bonusdreh';
    const card=createScratchTicket(ticket,label,async()=>{
     if(state.user?.id!==owner) throw new Error('Bitte melde dich erneut an.');
     if(state.deck.day!==ticket.day) throw new Error('Dieses Los ist abgelaufen.');
-    const result=await api('wheel/scratch',{day:ticket.day,turn:ticket.turn});
+    const result=await api('wheel/scratch',{day:ticket.day,turn:ticket.turn,birthday:Boolean(ticket.birthday)});
     if(state.user?.id===owner){
      const entry=scratchCards.get(key);
      if(entry?.card===card) entry.claimed=true;
-     if(result.prize) refresh().catch(()=>{});
+     refresh().catch(()=>{});
     }
     return result;
    });
@@ -529,7 +534,7 @@ function renderScratchTickets(){
 }
 
 function wheelAngle(spin){
- return spin?.slot===10?340.38:(spin?.slot??0)*35.64;
+ return wheelSegments.find(segment=>segment.slot===spin?.slot)?.angle??0;
 }
 
 function renderWheelResult(result,cards){
@@ -543,7 +548,7 @@ function renderWheelResult(result,cards){
   description.textContent=card.description;
   const score=document.createElement('strong');
   if(card.completed) score.textContent='✓ Erledigt · '+signed(card.reward)+' P';
-  else if(card.slot===10) showCoins(score,'+15');
+  else if(wheel[card.slot]?.coins) showCoins(score,'+'+wheel[card.slot].coins);
   else if(card.reward===null) score.textContent=card.slot===8?'Gutschein im Münzkonto':signed(card.initial)+' P'+(card.bonus?' · Bonusdreh freigeschaltet':'');
   else if(card.initial<0) score.textContent=signed(card.initial)+' P aktuell · bei Erledigung kein Abzug';
   else score.textContent=signed(card.reward)+' P bei Erledigung';
@@ -560,8 +565,8 @@ function renderWheel(unlocked){
  const angle=wheelAngle(spin);
  $('#wheel-disc').style.setProperty('--wheel-turn',-angle+'deg');
  largeWheel.style.setProperty('--wheel-turn',-angle+'deg');
- wheelLabels.forEach((label,slot)=>{
-  const orientation=(wheelAngle({slot})-90-angle+720)%360;
+ wheelLabels.forEach(({label,angle:fieldAngle})=>{
+  const orientation=(fieldAngle-90-angle+720)%360;
   label.style.setProperty('--field-flip',orientation>90&&orientation<270?'180deg':'0deg');
  });
  renderWheelResult($('#wheel-result'),spins);
@@ -789,6 +794,7 @@ async function refresh() {
  renderScratchTickets();
  syncGroupChat(cloudUrl?state.user:null);
  syncFoodPolls();
+ renderBirthdayGreeting();
  if(signedIn){render();showView();}
  else{
   currentView=currentAnchor=undefined;
@@ -797,6 +803,7 @@ async function refresh() {
   if(hadCloudSession && !cloudSession) setError('#notice','Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.');
  }
  syncPortraits();
+ syncProfile();
  syncReportAccount();
 }
 
@@ -1022,7 +1029,7 @@ wheelAction.addEventListener('click',async()=>{
   $('#wheel-scratch-link').hidden=true;
  }
  try {
-  await api(spinning?'wheel/spin':'wheel/complete',{day,turn});
+  await api(spinning?'wheel/spin':'wheel/complete',{day,turn,expandedWheel:true});
   await refresh();
   const result=state.deck?.day===day&&state.spins?.find(spin=>spin.turn===turn);
   if(spinning && result && !matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -1610,8 +1617,15 @@ challengeForm.addEventListener('submit',async event=>{
  finally{button.disabled=false;}
 });
 const berlinDay=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'});
+const birthdayNames=new Intl.ListFormat('de-DE');
 function renderBirthdayGreeting(){
- $('#jonas-birthday').hidden=berlinDay.format(new Date())!=='2026-11-16';
+ const names=state?.deck?.day===berlinDay.format(new Date())?state?.birthdays:undefined;
+ const banner=$('#birthday-banner');
+ banner.hidden=!names?.length;
+ if(names?.length){
+  const title='Alles Gute zum Geburtstag, '+birthdayNames.format(names)+'! 🎉';
+  if($('#birthday-title').textContent!==title) $('#birthday-title').textContent=title;
+ }
 }
 async function refreshNewDay(){
  renderBirthdayGreeting();
@@ -1626,6 +1640,91 @@ if(location.protocol!=='file:'){
  setInterval(refreshNewDay,1000);
  document.addEventListener('visibilitychange',refreshNewDay);
 }
+
+const profileForm=$('#profile-settings-form');
+const passwordForm=$('#profile-password-form');
+let profileOwner;
+let profileReady=false;
+let profileLoading=false;
+
+function setProfileFields(settings){
+ const fields=profileForm.elements;
+ fields.birthDate.value=settings.birthDate??'';
+ fields.birthDate.max=state.deck.day;
+ fields.showBirthday.checked=settings.showBirthday;
+ fields.workoutReminders.checked=settings.workoutReminders;
+ fields.friendNotifications.checked=settings.friendNotifications;
+ fields.reminderTime.value=settings.reminderTime;
+ const known=settings.birthdayMonthDay?.split('-').reverse().join('.');
+ setError('#profile-known-birthday',known&&!settings.birthDate?'Dein Geburtstag am '+known+'. ist bereits hinterlegt.':'');
+}
+
+async function syncProfile(){
+ const owner=cloudUrl?state?.user?.id:undefined;
+ $('#profile-nav').hidden=!owner;
+ if(owner!==profileOwner){
+  profileOwner=owner;
+  profileReady=profileLoading=false;
+  profileForm.hidden=true;
+  profileForm.reset();
+  passwordForm.reset();
+  setError('#profile-password-status');
+  setError('#profile-status');
+ }
+ if(!owner||currentView!=='profil'||profileReady||profileLoading) return;
+ profileLoading=true;
+ setError('#profile-status','Profil wird geladen …');
+ try{
+  const settings=await api('profile');
+  if(profileOwner!==owner) return;
+  setProfileFields(settings);
+  $('#profile-handle').textContent=state.user.handle;
+  profileReady=true;
+  profileForm.hidden=false;
+  setError('#profile-status');
+ }catch(error){if(profileOwner===owner) setError('#profile-status',error.message);}
+ finally{if(profileOwner===owner) profileLoading=false;}
+}
+
+profileForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(busy||!profileReady||!profileOwner) return;
+ const owner=profileOwner;
+ const fields=profileForm.elements;
+ const button=profileForm.querySelector('[type="submit"]');
+ busy=button.disabled=true;
+ setError('#profile-status');
+ try{
+  await api('profile',{birthDate:fields.birthDate.value||null,showBirthday:fields.showBirthday.checked,
+   workoutReminders:fields.workoutReminders.checked,friendNotifications:fields.friendNotifications.checked,reminderTime:fields.reminderTime.value});
+  if(profileOwner!==owner) return;
+  setError('#profile-status','Einstellungen gespeichert.');
+  await refresh().catch(error=>setError('#notice',error.message));
+ }catch(error){if(profileOwner===owner) setError('#profile-status',error.message);}
+ finally{busy=button.disabled=false;}
+});
+
+passwordForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(busy||!profileOwner) return;
+ const {currentPassword,newPassword,confirmPassword}=passwordForm.elements;
+ if(newPassword.value!==confirmPassword.value){
+  setError('#profile-password-status','Die neuen Passwörter stimmen nicht überein.');
+  confirmPassword.focus();
+  return;
+ }
+ const button=passwordForm.querySelector('[type="submit"]');
+ busy=button.disabled=true;
+ setError('#profile-password-status');
+ try{
+  const result=await api('profile/password',{currentPassword:currentPassword.value,newPassword:newPassword.value});
+  passwordForm.reset();
+  if(result.access_token) saveCloudSession(result);
+  setError('#profile-password-status',result.changed?'Passwort geändert. Verwende bei der nächsten Anmeldung dein neues Passwort.':'Passwort geändert.');
+ }catch(error){setError('#profile-password-status',error.message);}
+ finally{busy=button.disabled=false;}
+});
+
 $('#points-reset').addEventListener('submit',async event=>{
  event.preventDefault();
  if(busy) return;

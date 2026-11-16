@@ -218,7 +218,11 @@ body:has(#wheel-dialog[open]){overflow:hidden}
 .media-delete-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:800px){#gallery-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){#member-summary-content{grid-template-columns:minmax(0,1fr)}}
-.wheel-disc{background:conic-gradient(from -17.82deg,#d8fa76 0% 9.9%,#ff8dc9 9.9% 19.8%,#83e9ff 19.8% 29.7%,#bea8ff 29.7% 39.6%,#ffb183 39.6% 49.5%,#ffe17a 49.5% 59.4%,#9df5c1 59.4% 69.3%,#fa9ea5 69.3% 79.2%,#d9c3ff 79.2% 89.1%,#ff729d 89.1% 99%,#e4a329 99% 100%)}
+.wheel-disc{background:var(--wheel-colors,#292537)}
+.profile-panels{align-items:start}
+.profile-panels form input[type=date],.profile-panels form input[type=time]{width:100%;min-width:0}
+.profile-panels h3:not(:first-child){margin-top:8px}
+#profile-status,#profile-password-status{margin:8px 0 0}
 .daily-extra{display:inline-block;margin-top:12px}
 #challenge-editor summary{cursor:pointer;font-weight:700}
 #challenge-form{max-width:620px}

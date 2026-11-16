@@ -20,6 +20,7 @@
     <summary>Mehr <span aria-hidden="true">⌄</span></summary>
     <div class="more-links">
      <a href="#fettstrafe" id="food-polls-link" data-nav-view="fettstrafe" hidden>Fettstrafe</a>
+     <a href="#profil" id="profile-nav" data-nav-view="profil" hidden>Profil</a>
      <a href="#info" data-nav-view="info">So funktioniert’s</a>
      <a href="#feedback" data-nav-view="feedback">Bugs &amp; Ideen</a>
      <a href="#challenge-admin" id="admin-nav" data-nav-view="admin" hidden>Admin</a>
@@ -44,8 +45,8 @@
  </section>
  <main class="shell" data-member hidden>
   <div data-view="heute" id="start">
-  <aside class="panel birthday-banner" id="jonas-birthday" aria-label="Geburtstagsgruß" hidden>
-   <strong>Alles Gute zum Geburtstag, Jonas! 🎉</strong>
+  <aside class="panel birthday-banner" id="birthday-banner" aria-label="Geburtstagsgruß" hidden>
+   <strong id="birthday-title"></strong>
    <p>Heute zählt jede Wiederholung. Und jedes Stück Kuchen auch. 😉</p>
   </aside>
   <section class="home-hero" aria-labelledby="home-title">
@@ -142,7 +143,7 @@
   <div data-view="muenzen" hidden>
   <section id="muenzen" class="section">
    <div class="section-heading"><h2>Münzkonto &amp; Pranks</h2><span class="pill" id="coin-balance" hidden></span></div>
-   <p class="sub">Am Glücksrad gibt es ein Goldfeld für 15 Münzen, Rubbellose und einen Gutschein für einen freien Tag.</p>
+   <p class="sub">Am Glücksrad kannst du 3, 7 oder 15 Münzen, Rubbellose und einen Gutschein für einen freien Tag gewinnen.</p>
    <button class="outline" type="button" id="coin-login">Anmelden</button>
    <div id="coin-area" class="lower" hidden>
     <div class="panel">
@@ -192,6 +193,36 @@
    </details>
   </section>
   </div>
+  <div data-view="profil" hidden>
+   <section id="profil" class="section" aria-labelledby="profile-title">
+    <h2 id="profile-title">Profil</h2>
+    <p id="profile-status" role="status" hidden></p>
+    <div class="lower profile-panels">
+     <form class="panel" id="profile-settings-form" hidden>
+      <h3>Deine Daten</h3>
+      <p>Benutzername <strong id="profile-handle"></strong></p>
+      <label>Geburtsdatum<input name="birthDate" type="date" min="1900-01-01" autocomplete="bday"></label>
+      <p class="hint" id="profile-known-birthday" hidden></p>
+      <label class="challenge-enabled"><input name="showBirthday" type="checkbox"> Geburtstagsgruß in der Gruppe anzeigen</label>
+      <p class="hint">Dein Geburtsjahr bleibt privat. Am Geburtstag bekommst du drei Rubbellose, die bis Mitternacht gültig sind.</p>
+      <h3>Benachrichtigungen</h3>
+      <label class="challenge-enabled"><input name="workoutReminders" type="checkbox"> An mein offenes Workout erinnern</label>
+      <label>Uhrzeit (Berlin)<input name="reminderTime" type="time" required></label>
+      <label class="challenge-enabled"><input name="friendNotifications" type="checkbox"> Workout-Abschlüsse von Freunden</label>
+      <p class="hint">Diese Auswahl gilt für die kommende Push-Funktion.</p>
+      <button class="primary" type="submit">Einstellungen speichern</button>
+     </form>
+     <form class="panel" id="profile-password-form">
+      <h3>Passwort ändern</h3>
+      <label>Aktuelles Passwort<input name="currentPassword" type="password" autocomplete="current-password" required minlength="10" maxlength="128"></label>
+      <label>Neues Passwort<input name="newPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+      <label>Neues Passwort wiederholen<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+      <button class="outline" type="submit">Passwort ändern</button>
+      <p id="profile-password-status" role="status" hidden></p>
+     </form>
+    </div>
+   </section>
+  </div>
   <div data-view="info" hidden>
   <section id="info" class="section" aria-labelledby="info-heading">
    <h2 id="info-heading">So funktioniert die App</h2>
@@ -212,7 +243,7 @@
    </details>
    <details class="panel info-card">
     <summary>Glücksrad und freie Tage</summary>
-    <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Das kleine Goldfeld bringt mit 1 % Chance direkt 15 Münzen.</p>
+    <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Es gibt Felder mit 3 und 7 Münzen. Das kleine Goldfeld bringt mit 1 % Chance direkt 15 Münzen.</p>
     <p>Jeder Dreh gibt dir ein Rubbellos für denselben Tag. Drei gleiche Zahlen gewinnen. Die Chancen pro Los sind 50 % für eine Niete, 24 % für 1 Münze, 15 % für 2 Münzen, 10 % für 3 Münzen und 1 % für 15 Münzen.</p>
     <p>Rad-Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung gleichst du 30 Minuspunkte mit 30 zusätzlichen Liegestützen aus.</p>
     <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel.</p>
@@ -337,7 +368,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.39</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.40</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>

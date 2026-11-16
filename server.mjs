@@ -91,7 +91,8 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const assets = new Map([['/',['index.html','text/html']],['/app.js',['app.js','text/javascript']],['/style.css',['style.css','text/css']],
  ['/media-admin.mjs',['media-admin.mjs','text/javascript']],['/season-media.mjs',['season-media.mjs','text/javascript']],
  ['/voice-media.mjs',['voice-media.mjs','text/javascript']],['/scratch-ticket.mjs',['scratch-ticket.mjs','text/javascript']],
- ['/group-chat.mjs',['group-chat.mjs','text/javascript']],['/pwa.mjs',['pwa.mjs','text/javascript']]]);
+ ['/group-chat.mjs',['group-chat.mjs','text/javascript']],['/pwa.mjs',['pwa.mjs','text/javascript']],
+ ['/wheel.mjs',['supabase/functions/_shared/wheel.mjs','text/javascript']]]);
 const attempts = new Map();
 const resetAttempts = new Map();
 const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
@@ -329,7 +330,7 @@ createServer(async (req,res)=>{
      if(!result.changes) fail(409,'Du hast heute bereits gedreht.');
      db.prepare('INSERT INTO scratch_tickets(user_id,day,turn,symbols) VALUES(?,?,?,?)')
       .run(user.id,deck.day,nextTurn,JSON.stringify(drawScratchValues(randomInt)));
-     if(card.coins) coins.credit.run(user.id,card.coins,'Glücksrad-Jackpot',deck.day);
+     if(card.coins) coins.credit.run(user.id,card.coins,slot===10?'Glücksrad-Jackpot':'Glücksrad',deck.day);
      if(card.rest) coins.grantRest.run(user.id);
     });
    } else {

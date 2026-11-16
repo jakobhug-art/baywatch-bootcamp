@@ -9,11 +9,21 @@ export const wheel = [
  {title:'Extrarunde', description:'Du gewinnst sofort 5 Punkte.', initial:5, bonus:true},
  {title:'Freier Tag', description:'Du gewinnst einen Gutschein für einen freien Tag. Löse ihn im Münzkonto ein, wenn du ihn brauchst.', initial:0, rest:true},
  {title:'Nibbler ❤️', description:'Hugo gibt Joni einen Nibbler.', initial:0},
- {title:'Münz-Jackpot', description:'Du gewinnst sofort 15 Münzen.', initial:0, coins:15}
+ {title:'Münz-Jackpot', description:'Du gewinnst sofort 15 Münzen.', initial:0, coins:15},
+ {title:'7 Münzen', description:'Du gewinnst sofort 7 Münzen.', initial:0, coins:7},
+ {title:'3 Münzen', description:'Du gewinnst sofort 3 Münzen.', initial:0, coins:3}
 ];
 
-export function drawWheelSlot(randomInt){
- return randomInt(100)===0 ? wheel.length-1 : randomInt(wheel.length-1);
+const regularSlots=wheel.map((_,slot)=>slot).filter(slot=>slot!==10);
+const regularWidth=356.4/regularSlots.length;
+export const wheelSegments=[...regularSlots,10].map((slot,index)=>{
+ const start=index*regularWidth;
+ const end=slot===10?360:(index+1)*regularWidth;
+ return {slot,start,end,angle:(start+end-regularWidth)/2};
+});
+
+export function drawWheelSlot(randomInt,expanded=true){
+ return randomInt(100)===0 ? 10 : expanded?regularSlots[randomInt(regularSlots.length)]:randomInt(10);
 }
 
 export function drawScratchValues(randomInt){
