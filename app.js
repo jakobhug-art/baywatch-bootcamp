@@ -4,8 +4,10 @@ import { setupInstallableApp } from './pwa.mjs';
 import { wheel, wheelSegments } from './wheel.mjs';
 import { exercisePoints } from './scoring.mjs';
 import { setupProfile } from './profile.mjs';
+import { setupTouchSelection } from './touch-selection.mjs';
 
 const $ = selector => document.querySelector(selector);
+setupTouchSelection();
 function showCoins(element,amount,suffix=''){
  const icon=document.createElement('span');
  icon.className='coin-icon';
@@ -595,6 +597,11 @@ function renderRanking() {
  payouts.hidden=true;
  for(const button of document.querySelectorAll('[data-ranking]')){
   button.setAttribute('aria-pressed',String(button.dataset.ranking===rankingPeriod));
+  if(button.dataset.ranking==='seasonRanking'&&state.season?.start){
+   const [year,month]=state.season.start.split('-').map(Number);
+   const monthsSinceFirstSeason=(year-2026)*12+month-11;
+   button.textContent='Season '+Math.max(1,1+Math.floor(monthsSinceFirstSeason/2));
+  }
  }
  target.replaceChildren();
  if(!state.user){

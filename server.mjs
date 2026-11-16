@@ -215,9 +215,8 @@ createServer(async (req,res)=>{
    const amounts=new Map(db.prepare('SELECT exercise,amount FROM quantities WHERE user_id=? AND day=?')
     .all(memberId,deck.day).map(({exercise,amount})=>[exercise,amount]));
    const weeklyDone=new Set(db.prepare(`
-    SELECT m.exercise FROM marks m JOIN weekly_point_dates d USING(user_id,week,exercise)
-    WHERE m.user_id=? AND m.period=m.week AND m.week=? AND d.day=?
-   `).all(memberId,deck.week,deck.day).map(({exercise})=>exercise));
+    SELECT exercise FROM marks WHERE user_id=? AND period=week AND week=?
+   `).all(memberId,deck.week).map(({exercise})=>exercise));
    return reply({
     handle:member.handle,
     balance:coins.balance(memberId),

@@ -9,6 +9,10 @@ a{color:inherit;text-decoration:none}
 a,button,summary{-webkit-tap-highlight-color:transparent}
 :is(a[href],button,summary):active:not(:disabled):not([aria-disabled="true"]){box-shadow:inset 0 0 0 2px rgb(216 250 118 / 55%)}
 button,summary{-webkit-user-select:none;user-select:none}
+@media(pointer:coarse){
+ body.touch-selection-enabled{-webkit-user-select:none;user-select:none}
+ :is(input,textarea,[contenteditable]:not([contenteditable="false"]),.touch-selection){-webkit-user-select:text;user-select:text}
+}
 button{cursor:pointer}
 button:disabled{cursor:not-allowed;opacity:.65}
 button[aria-busy="true"]{cursor:wait}

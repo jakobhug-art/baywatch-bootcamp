@@ -8,6 +8,7 @@ export const browserModules={
  'scoring.mjs':'scoring.mjs',
  'scratch-ticket.mjs':'scratch-ticket.mjs',
  'season-media.mjs':'season-media.mjs',
+ 'touch-selection.mjs':'touch-selection.mjs',
  'voice-media.mjs':'voice-media.mjs',
  'wheel.mjs':'supabase/functions/_shared/wheel.mjs'
 };

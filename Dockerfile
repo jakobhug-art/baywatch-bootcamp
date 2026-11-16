@@ -1,6 +1,6 @@
 FROM node:24-alpine
 WORKDIR /app
-COPY server.mjs deck.mjs coins.mjs challenges.mjs rankings.mjs browser-modules.mjs index.html app.js style.css media-admin.mjs season-media.mjs voice-media.mjs scratch-ticket.mjs group-chat.mjs pwa.mjs profile.mjs scoring.mjs ./
+COPY server.mjs deck.mjs coins.mjs challenges.mjs rankings.mjs browser-modules.mjs index.html app.js style.css media-admin.mjs season-media.mjs voice-media.mjs scratch-ticket.mjs group-chat.mjs pwa.mjs profile.mjs scoring.mjs touch-selection.mjs ./
 COPY supabase/functions/_shared/wheel.mjs ./supabase/functions/_shared/wheel.mjs
 RUN mkdir /data && chown node:node /data
 USER node
