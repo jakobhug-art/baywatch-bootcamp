@@ -321,7 +321,7 @@ async function api(path, payload) {
    return {ok:true};
   }
   if(path==='state'||path==='state?birthdays=0'){
-   const route=path==='state'?'state?birthdays=1':path;
+   const route=path==='state'?'state?birthdays=1&tickets=2':path;
    const token=cloudSession?.access_token;
    try{return await cloudRequest(route,undefined,token);}
    catch(error){
@@ -506,7 +506,8 @@ const scratchCards=new Map();
 
 function renderScratchTickets(){
  const owner=state.user?.id;
- const tickets=owner?(state.scratchTickets??[]).filter(ticket=>ticket.day===state.deck.day):[];
+ const tickets=owner?(state.scratchTickets??[]).filter(ticket=>ticket.day===state.deck.day)
+  .sort((a,b)=>Number(Boolean(a.birthday))-Number(Boolean(b.birthday))||a.turn-b.turn||(a.ticket??1)-(b.ticket??1)):[];
  const list=$('#scratch-list');
  if(scratchOwner!==owner){
   scratchOwner=owner;
@@ -515,15 +516,16 @@ function renderScratchTickets(){
  $('#scratch-area').hidden=!tickets.length;
  const keys=new Set();
  const cards=tickets.map(ticket=>{
-  const key=ticket.day+':'+(ticket.birthday?'birthday':'wheel')+':'+ticket.turn;
+  const number=ticket.ticket??1;
+  const key=ticket.day+':'+(ticket.birthday?'birthday':'wheel')+':'+ticket.turn+':'+number;
   keys.add(key);
   const cached=scratchCards.get(key);
   if(!cached || !cached.claimed&&ticket.claimed){
-   const label=ticket.birthday?'🎂 Geburtstagslos '+ticket.turn+' / 3':ticket.turn===1?'Los zum ersten Dreh':'Los zum Bonusdreh';
+   const label=ticket.birthday?'🎂 Geburtstagslos '+ticket.turn+' / 3':`Los ${number} / 2 · ${ticket.turn===1?'Erster Dreh':'Bonusdreh'}`;
    const card=createScratchTicket(ticket,label,async()=>{
     if(state.user?.id!==owner) throw new Error('Bitte melde dich erneut an.');
     if(state.deck.day!==ticket.day) throw new Error('Dieses Los ist abgelaufen.');
-    const result=await api('wheel/scratch',{day:ticket.day,turn:ticket.turn,birthday:Boolean(ticket.birthday)});
+    const result=await api('wheel/scratch',{day:ticket.day,turn:ticket.turn,ticket:number,birthday:Boolean(ticket.birthday)});
     if(state.user?.id===owner){
      const entry=scratchCards.get(key);
      if(entry?.card===card) entry.claimed=true;
@@ -587,7 +589,7 @@ function renderWheel(unlocked){
  wheelAction.textContent=pending?'Aufgabe erledigt':bonus?'Bonusdreh nutzen':'Rad drehen';
  $('#wheel-lock').hidden=$('#wheel-dialog-lock').hidden=Boolean(unlocked || pending || wheelAction.hidden);
  $('#wheel-scratch-link').hidden=!(state.scratchTickets??[]).some(ticket=>ticket.day===state.deck.day&&!ticket.claimed);
- $('#today-wheel').textContent=!$('#wheel-scratch-link').hidden?'Rubbellos freirubbeln':unlocked&&!wheelAction.hidden?'Glücksrad bereit':'Glücksrad';
+ $('#today-wheel').textContent=!$('#wheel-scratch-link').hidden?'Lose freirubbeln':unlocked&&!wheelAction.hidden?'Glücksrad bereit':'Glücksrad';
  $('#today-wheel').href=$('#wheel-scratch-link').hidden?'#gluecksrad':'#scratch-area';
 }
 

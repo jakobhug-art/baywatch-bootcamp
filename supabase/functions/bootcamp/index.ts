@@ -105,8 +105,10 @@ Deno.serve(async (request) => {
       if (!token) return json({ user: null });
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
-      if (new URL(request.url).searchParams.get("birthdays") !== "1") return rpc("bootcamp_training_state", { p_user: data.user.id });
-      return rpc("bootcamp_member_state", { p_user: data.user.id, p_birthday_symbols: Array.from({ length: 3 }, () => drawScratchValues(randomInt)) });
+      const query = new URL(request.url).searchParams;
+      if (query.get("birthdays") !== "1") return rpc("bootcamp_training_state", { p_user: data.user.id });
+      const stateFunction = query.get("tickets") === "2" ? "bootcamp_member_state_with_tickets" : "bootcamp_member_state";
+      return rpc(stateFunction, { p_user: data.user.id, p_birthday_symbols: Array.from({ length: 3 }, () => drawScratchValues(randomInt)) });
     }
     if (path === "/profile" && request.method === "GET") {
       if (!token) return json({ error: "Bitte melde dich an." }, 401);
@@ -359,10 +361,11 @@ Deno.serve(async (request) => {
     }
     if (path === "/wheel/scratch" && typeof input.day === "string" && isoDay.test(input.day)) {
       const birthday = input.birthday === true;
-      if ((birthday ? [1, 2, 3] : [1, 2]).includes(input.turn)) {
-        return rpc(birthday ? "bootcamp_claim_birthday_ticket" : "bootcamp_claim_scratch", {
-          p_user: data.user.id, p_day: input.day, p_turn: input.turn,
-        });
+      const ticket = input.ticket ?? 1;
+      const args = { p_user: data.user.id, p_day: input.day, p_turn: input.turn };
+      if (birthday && [1, 2, 3].includes(input.turn)) return rpc("bootcamp_claim_birthday_ticket", args);
+      if (!birthday && [1, 2].includes(input.turn) && [1, 2].includes(ticket)) {
+        return rpc("bootcamp_claim_wheel_ticket", { ...args, p_ticket: ticket });
       }
     }
     if (path === "/wheel/complete" && typeof input.day === "string" && [1, 2].includes(input.turn)) {

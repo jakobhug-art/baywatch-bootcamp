@@ -50,12 +50,24 @@ if(!db.prepare('PRAGMA table_info(wheel_spins)').all().some(column=>column.name=
  `);
 }
 const wheelResults=db.prepare('SELECT turn,slot,title,description,initial,reward,completed,bonus FROM wheel_spins WHERE user_id=? AND day=? ORDER BY turn');
-db.exec(`CREATE TABLE IF NOT EXISTS scratch_tickets(
+const scratchTicketSchema=`CREATE TABLE IF NOT EXISTS scratch_tickets(
  user_id INTEGER NOT NULL, day TEXT NOT NULL, turn INTEGER NOT NULL, symbols TEXT NOT NULL, claimed_on TEXT,
- PRIMARY KEY(user_id,day,turn), FOREIGN KEY(user_id,day,turn) REFERENCES wheel_spins(user_id,day,turn) ON DELETE CASCADE
-)`);
-const availableTickets=db.prepare(`SELECT day,turn,symbols,claimed_on FROM scratch_tickets
- WHERE user_id=? AND day=? ORDER BY turn DESC`);
+ ticket INTEGER NOT NULL DEFAULT 1 CHECK(ticket IN (1,2)),
+ PRIMARY KEY(user_id,day,turn,ticket), FOREIGN KEY(user_id,day,turn) REFERENCES wheel_spins(user_id,day,turn) ON DELETE CASCADE
+)`;
+db.exec(scratchTicketSchema);
+if(!db.prepare('PRAGMA table_info(scratch_tickets)').all().some(column=>column.name==='ticket')){
+ db.exec(`BEGIN IMMEDIATE;
+  ALTER TABLE scratch_tickets RENAME TO scratch_tickets_old;
+  ${scratchTicketSchema};
+  INSERT INTO scratch_tickets(user_id,day,turn,symbols,claimed_on)
+   SELECT user_id,day,turn,symbols,claimed_on FROM scratch_tickets_old;
+  DROP TABLE scratch_tickets_old;
+  COMMIT;`);
+}
+const addScratchTicket=db.prepare('INSERT INTO scratch_tickets(user_id,day,turn,ticket,symbols) VALUES(?,?,?,?,?)');
+const availableTickets=db.prepare(`SELECT day,turn,ticket,symbols,claimed_on FROM scratch_tickets
+ WHERE user_id=? AND day=? ORDER BY turn,ticket`);
 db.exec(`CREATE TABLE IF NOT EXISTS daily_skips(
  user_id INTEGER NOT NULL REFERENCES users(id),day TEXT NOT NULL,exercise TEXT NOT NULL,PRIMARY KEY(user_id,day)
 )`);
@@ -66,6 +78,14 @@ const coins=setupCoins(db,fail);
 const rankings=setupRankings(db,{legacyCount:daily.length,monthTarget,monthBonus,rewardsStart:seasonStart(schedule().day)});
 // Apply new scoring to the open day while preserving closed days.
 const currentDay=challenges.current();
+coins.transaction(()=>{
+ const missing=db.prepare(`SELECT first.user_id,first.day,first.turn FROM scratch_tickets first
+  WHERE first.day=? AND first.ticket=1 AND NOT EXISTS(
+   SELECT 1 FROM scratch_tickets extra WHERE extra.user_id=first.user_id AND extra.day=first.day
+    AND extra.turn=first.turn AND extra.ticket=2
+  )`).all(currentDay.day);
+ for(const {user_id,day,turn} of missing) addScratchTicket.run(user_id,day,turn,2,JSON.stringify(drawScratchValues(randomInt)));
+});
 const currentAmounts=db.prepare('SELECT user_id,amount FROM quantities WHERE day=? AND exercise=?');
 const updatePoints=db.prepare('UPDATE quantities SET points=? WHERE user_id=? AND day=? AND exercise=?');
 coins.transaction(()=>{
@@ -291,17 +311,18 @@ createServer(async (req,res)=>{
   if(req.method==='POST' && path==='/api/wheel/scratch'){
    if(!user) fail(401,'Bitte melde dich an.');
    const input=await body(req);
-   if(typeof input?.day!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.day) || ![1,2].includes(input.turn)) fail(400,'Ungültiges Los.');
+   const number=input?.ticket??1;
+   if(typeof input?.day!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.day) || ![1,2].includes(input.turn) || ![1,2].includes(number)) fail(400,'Ungültiges Los.');
    if(input.day!==deck.day || schedule().day!==deck.day) fail(409,'Dieses Los ist abgelaufen.');
    const prize=coins.transaction(()=>{
-    const ticket=db.prepare('SELECT symbols,claimed_on FROM scratch_tickets WHERE user_id=? AND day=? AND turn=?')
-     .get(user.id,input.day,input.turn);
+    const ticket=db.prepare('SELECT symbols,claimed_on FROM scratch_tickets WHERE user_id=? AND day=? AND turn=? AND ticket=?')
+     .get(user.id,input.day,input.turn,number);
     if(!ticket) fail(404,'Rubbellos nicht gefunden.');
     const values=JSON.parse(ticket.symbols);
     const amount=values.every(value=>value===values[0])?values[0]:0;
     if(!ticket.claimed_on){
-     db.prepare('UPDATE scratch_tickets SET claimed_on=? WHERE user_id=? AND day=? AND turn=?')
-      .run(deck.day,user.id,input.day,input.turn);
+     db.prepare('UPDATE scratch_tickets SET claimed_on=? WHERE user_id=? AND day=? AND turn=? AND ticket=?')
+      .run(deck.day,user.id,input.day,input.turn,number);
      if(amount) coins.credit.run(user.id,amount,'Rubbellos',deck.day);
     }
     return amount;
@@ -331,8 +352,7 @@ createServer(async (req,res)=>{
      const result=db.prepare('INSERT OR IGNORE INTO wheel_spins(user_id,day,slot,title,description,initial,reward,turn,bonus) VALUES(?,?,?,?,?,?,?,?,?)')
       .run(user.id,deck.day,slot,card.title,description,card.initial,card.reward??null,nextTurn,bonus);
      if(!result.changes) fail(409,'Du hast heute bereits gedreht.');
-     db.prepare('INSERT INTO scratch_tickets(user_id,day,turn,symbols) VALUES(?,?,?,?)')
-      .run(user.id,deck.day,nextTurn,JSON.stringify(drawScratchValues(randomInt)));
+     for(const ticket of [1,2]) addScratchTicket.run(user.id,deck.day,nextTurn,ticket,JSON.stringify(drawScratchValues(randomInt)));
      if(amount) coins.credit.run(user.id,amount,amount<0?'Glücksrad · Münzverlust':slot===10?'Glücksrad-Jackpot':'Glücksrad',deck.day);
      if(card.rest) coins.grantRest.run(user.id);
     });
@@ -381,7 +401,7 @@ createServer(async (req,res)=>{
    const standings=user?rankings.state(deck):{};
    const spins=user?wheelResults.all(user.id,deck.day):[];
    const scratchTickets=user?availableTickets.all(user.id,deck.day).map(row=>({
-    day:row.day,turn:row.turn,values:JSON.parse(row.symbols),claimed:Boolean(row.claimed_on)
+    day:row.day,turn:row.turn,ticket:row.ticket,values:JSON.parse(row.symbols),claimed:Boolean(row.claimed_on)
    })):[];
    return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,scratchTickets,
     defaultSkip:defaultSkip(deck),skippedExercise:user?selectedSkip.get(user.id,deck.day)?.exercise??null:null,
