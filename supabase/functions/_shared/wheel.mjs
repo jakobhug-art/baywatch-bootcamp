@@ -32,8 +32,8 @@ export function drawWheelSlot(randomInt,version=2){
 }
 
 export function drawScratchValues(randomInt){
- const roll=randomInt(100);
- const prize=roll<50?0:roll<74?1:roll<89?2:roll<99?3:15;
+ const roll=randomInt(200);
+ const prize=roll<126?0:roll<170?1:roll<190?2:roll<199?3:15;
  if(prize) return [prize,prize,prize];
  const symbols=[1,2,3,15];
  const values=[symbols[randomInt(symbols.length)],symbols[randomInt(symbols.length)]];
