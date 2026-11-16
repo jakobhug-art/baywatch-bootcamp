@@ -382,6 +382,9 @@ Deno.serve(async (request) => {
     }
     if (path === "/coins/buy" && typeof input.day === "string" && typeof input.kind === "string"
         && typeof input.requestId === "string" && uuid.test(input.requestId)) {
+      if (input.kind === "rest_voucher") {
+        return rpc("bootcamp_redeem_rest_voucher", { p_user: data.user.id, p_day: input.day, p_request: input.requestId });
+      }
       if (input.kind === "nickname_week" || input.kind === "nickname_season") {
         const detail = typeof input.detail === "string" ? input.detail.trim() : "";
         if ([...detail].length < 2 || [...detail].length > 40 || /\p{C}/u.test(detail)) {

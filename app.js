@@ -176,6 +176,8 @@ function renderDaySummary(amounts){
  $('#workout-total-with-photo').textContent=(workoutPoints+10)+' P';
  $('#workout-total-without-photo').textContent=(workoutPoints-20)+' P';
  $('#workout-finish').disabled=Boolean(state.workoutFinished || quantityQueue.size || state.defaultSkip&&!state.skippedExercise);
+ const restVoucher=$('#workout-rest-voucher');
+ if(restVoucher) restVoucher.disabled=Boolean(quantityQueue.size);
 }
 
 const cloudUrl = document.querySelector('meta[name="bootcamp-api"]')?.content;
@@ -447,6 +449,8 @@ function render() {
    </dl>
    <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':state.defaultSkip&&!state.skippedExercise?'Wähle zuerst eine Übung, die du heute streichst.':state.birthdayWheelUnlocked?'Dein Geburtstagsdreh ist bereits freigeschaltet.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
+   ${coins?.vouchers&&!rest&&!state.workoutFinished?'<button class="outline" id="workout-rest-voucher" type="button">Freien Tag für heute einlösen</button>':''}
+   <p id="workout-rest-status" class="hint" role="status" hidden></p>
   </article>`:'');
  updateStopwatchControls();
  renderDaySummary(amounts);
@@ -1087,6 +1091,13 @@ $('#daily').addEventListener('click',event=>{
   }
   return;
  }
+ const restVoucher=event.target.closest('#workout-rest-voucher');
+ if(restVoucher){
+  if(busy||quantityQueue.size||!state.coins?.vouchers||state.coins.rest||state.workoutFinished) return;
+  restVoucher.disabled=true;
+  sendCoin('buy',{kind:'rest_voucher'},'#workout-rest-status').finally(()=>{restVoucher.disabled=Boolean(quantityQueue.size);});
+  return;
+ }
  const button=event.target.closest('[data-delta]');
  if(button) saveAmount(button.form,Number(button.dataset.delta));
 });
@@ -1575,7 +1586,7 @@ async function sendCoin(action,payload,statusTarget='#coin-status'){
   if(action==='buy' && payload.kind==='voice'){
    if(voiceArchive.open) loadVoiceArchive();
    setError('#coin-status','Gesendet. Die Aufnahme ist jetzt im Season-Archiv.');
-  }else setError(statusTarget,'Gespeichert.');
+  }else setError(statusTarget,payload.kind==='rest_voucher'?'Dein freier Tag ist aktiv.':'Gespeichert.');
   return true;
  } catch(error){
   setError(statusTarget,error.message);
