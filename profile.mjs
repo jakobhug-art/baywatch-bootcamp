@@ -8,9 +8,9 @@ export function setupProfile({api,refresh,saveSession,setStatus,isBusy,setBusy})
   const fields=settingsForm.elements;
   fields.birthDate.value=settings.birthDate??'';
   fields.showBirthday.checked=settings.showBirthday;
-  fields.workoutReminders.checked=settings.workoutReminders;
+  fields.morningReminder.checked=settings.morningReminder??settings.workoutReminders;
+  fields.eveningReminder.checked=settings.eveningReminder??settings.workoutReminders;
   fields.friendNotifications.checked=settings.friendNotifications;
-  fields.reminderTime.value=settings.reminderTime;
   const known=settings.birthdayMonthDay?.split('-').reverse().join('.');
   setStatus('#profile-known-birthday',known&&!settings.birthDate?'Dein Geburtstag am '+known+'. ist bereits hinterlegt.':'');
  }
@@ -26,7 +26,8 @@ export function setupProfile({api,refresh,saveSession,setStatus,isBusy,setBusy})
   setStatus('#profile-status');
   try{
    await api('profile',{birthDate:fields.birthDate.value||null,showBirthday:fields.showBirthday.checked,
-    workoutReminders:fields.workoutReminders.checked,friendNotifications:fields.friendNotifications.checked,reminderTime:fields.reminderTime.value});
+    morningReminder:fields.morningReminder.checked,eveningReminder:fields.eveningReminder.checked,
+    friendNotifications:fields.friendNotifications.checked});
    if(account!==viewer) return;
    setStatus('#profile-status','Einstellungen gespeichert.');
    await refresh().catch(error=>setStatus('#notice',error.message));

@@ -22,12 +22,12 @@ type Job = {
 };
 
 async function send(job: Job) {
-  if (!isPushEndpoint(job.endpoint)) return "expired";
+  if (!isPushEndpoint(job.endpoint)) return { result: "expired", status: null };
   const url = job.kind === "friend" ? "#rangliste" : job.kind === "reminder" ? "#heute" : "#profil";
   try {
     const request = webPush.generateRequestDetails(
       { endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } },
-      JSON.stringify({ body: job.body, url, tag: "bootcamp-" + job.id }),
+      JSON.stringify({ body: job.body, url, kind: job.kind, tag: "bootcamp-" + job.id }),
       { vapidDetails: { subject, publicKey: publicKey!, privateKey: privateKey! }, TTL: job.kind === "test" ? 300 : 3600,
         contentEncoding: "aes128gcm", urgency: "high" },
     );
@@ -38,13 +38,13 @@ async function send(job: Job) {
     const response = await fetch(request.endpoint, { method: "POST", headers, redirect: "error",
       body: Uint8Array.from(request.body), signal: AbortSignal.timeout(7000) });
     await response.body?.cancel();
-    if (response.ok) return "finished";
-    if (response.status === 404 || response.status === 410) return "expired";
+    if (response.ok) return { result: "accepted", status: response.status };
+    if (response.status === 404 || response.status === 410) return { result: "expired", status: response.status };
     console.warn("Bootcamp push provider status", response.status);
-    return response.status === 429 || response.status >= 500 ? "retry" : "finished";
+    return { result: response.status === 429 || response.status >= 500 ? "retry" : "failed", status: response.status };
   } catch {
     console.warn("Bootcamp push attempt failed");
-    return "retry";
+    return { result: "retry", status: null };
   }
 }
 
@@ -58,9 +58,9 @@ Deno.serve(async (request) => {
   if (error) return Response.json({ error: "Queue unavailable" }, { status: 503 });
   const jobs: Job[] = data ?? [];
   const results = await Promise.all(jobs.map(async job => {
-    const result = await send(job);
-    if (result !== "retry") {
-      const { error } = await admin.rpc("bootcamp_finish_push_job", { p_id: job.id, p_attempt: job.attempts, p_result: result });
+    const { result, status } = await send(job);
+    if (result !== "retry" || job.attempts >= 3) {
+      const { error } = await admin.rpc("bootcamp_finish_push_job", { p_id: job.id, p_attempt: job.attempts, p_result: result, p_provider_status: status });
       if (error) console.warn("Bootcamp push could not mark job", error.code);
     }
     return result;

@@ -3,16 +3,22 @@ self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 
 self.addEventListener('message',event=>{
  if(event.data==='bootcamp-activate') event.waitUntil(self.skipWaiting());
+ if(event.data==='bootcamp-push-ready') event.ports[0]?.postMessage(true);
 });
 
 self.addEventListener('push',event=>{
  let data;
  try{data=event.data?.json();}catch{}
- event.waitUntil(self.registration.showNotification('Baywatch Bootcamp',{
+ const notification=self.registration.showNotification('Baywatch Bootcamp',{
   body:data?.body||'Du hast eine neue Nachricht von Bootcamp.',
-  icon:new URL('./bootcamp-192.png',self.registration.scope).href,
+  icon:new URL('./bootcamp-icon-192.png',self.registration.scope).href,
   tag:data?.tag,
   data:{url:data?.url}
+ });
+ event.waitUntil(notification.then(async()=>{
+  if(data?.kind!=='test') return;
+  const windows=await self.clients.matchAll({type:'window'});
+  for(const client of windows) client.postMessage({type:'bootcamp-push-test-received',tag:data.tag});
  }));
 });
 

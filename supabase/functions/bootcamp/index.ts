@@ -257,13 +257,14 @@ Deno.serve(async (request) => {
     if (error || !data.user) return json({ error: "Bitte melde dich erneut an." }, 401);
     if (path === "/push/device") {
       const { action, endpoint, keys } = input;
-      if (!["enable", "disable", "status", "test"].includes(action) || !isPushEndpoint(endpoint)) {
+      if (!["enable", "disable", "status", "test", "test-status"].includes(action) || !isPushEndpoint(endpoint)) {
         return json({ error: "Dieses Push-Abo wird nicht unterstützt." }, 400);
       }
       if (action === "enable" && (typeof keys?.p256dh !== "string" || !/^[\w-]{87}=?$/.test(keys.p256dh) ||
           typeof keys?.auth !== "string" || !/^[\w-]{22}(==)?$/.test(keys.auth))) {
         return json({ error: "Die Gerätefreigabe konnte nicht gespeichert werden." }, 400);
       }
+      if (action === "test-status") return rpc("bootcamp_push_test_status", { p_user: data.user.id, p_endpoint: endpoint });
       return rpc("bootcamp_push_device", { p_user: data.user.id, p_action: action, p_endpoint: endpoint,
         p_p256dh: action === "enable" ? keys.p256dh : null, p_auth: action === "enable" ? keys.auth : null });
     }
@@ -275,8 +276,17 @@ Deno.serve(async (request) => {
           return json({ error: "Ungültiges Geburtsdatum." }, 400);
         }
       }
-      if (typeof input.showBirthday !== "boolean" || typeof input.workoutReminders !== "boolean"
-        || typeof input.friendNotifications !== "boolean" || typeof input.reminderTime !== "string"
+      if (typeof input.showBirthday !== "boolean" || typeof input.friendNotifications !== "boolean") {
+        return json({ error: "Prüfe deine Einstellungen." }, 400);
+      }
+      if ("morningReminder" in input || "eveningReminder" in input) {
+        if (typeof input.morningReminder !== "boolean" || typeof input.eveningReminder !== "boolean") {
+          return json({ error: "Prüfe deine Einstellungen." }, 400);
+        }
+        return rpc("bootcamp_save_fixed_push_profile", { p_user: data.user.id, p_birth: input.birthDate,
+          p_show: input.showBirthday, p_morning: input.morningReminder, p_evening: input.eveningReminder, p_friends: input.friendNotifications });
+      }
+      if (typeof input.workoutReminders !== "boolean" || typeof input.reminderTime !== "string"
         || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.reminderTime)) return json({ error: "Prüfe deine Einstellungen." }, 400);
       return rpc("bootcamp_save_profile_settings", { p_user: data.user.id, p_birth: input.birthDate,
         p_show: input.showBirthday, p_reminders: input.workoutReminders, p_friends: input.friendNotifications, p_time: input.reminderTime });

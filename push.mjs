@@ -2,6 +2,19 @@ function decodeKey(value){
  return Uint8Array.from(atob(value.replaceAll('-','+').replaceAll('_','/')),character=>character.charCodeAt(0));
 }
 
+function workerReady(worker){
+ return new Promise(resolve=>{
+  if(!worker.active){resolve(false);return;}
+  const {port1,port2}=new MessageChannel();
+  const finish=ready=>{clearTimeout(timeout);port1.close();resolve(ready);};
+  const timeout=setTimeout(()=>finish(false),1200);
+  port1.onmessage=event=>finish(event.data===true);
+  worker.active.postMessage('bootcamp-push-ready',[port2]);
+ });
+}
+
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
 export function setupPush({api,registration}){
  const enable=document.querySelector('#push-enable');
  const disable=document.querySelector('#push-disable');
@@ -16,7 +29,7 @@ export function setupPush({api,registration}){
   enable.hidden=!supported||permission==='denied'||Boolean(enabled);
   enable.disabled=!account?.key||Boolean(account?.busy);
   disable.hidden=!account?.active;
-  test.hidden=!enabled;
+  test.hidden=!enabled||!account?.ready;
   test.disabled=disable.disabled=Boolean(account?.busy);
   status.textContent=!supported?'Für Push brauchst du einen unterstützten Browser. Auf dem iPhone öffne Bootcamp vom Home-Bildschirm.':
    permission==='denied'?'Benachrichtigungen sind gesperrt. Erlaube sie in den Einstellungen deines Geräts oder Browsers.':
@@ -41,6 +54,8 @@ export function setupPush({api,registration}){
    const [worker,{publicKey}]=await Promise.all([registration,api('push/key')]);
    if(account!==viewer) return;
    if(!worker?.pushManager) throw new Error('Push ist in diesem Browser gerade nicht verfügbar.');
+   if(!await workerReady(worker)) throw new Error('Installiere zuerst das App-Update über „Jetzt aktualisieren“ und öffne das Profil erneut.');
+   if(account!==viewer) return;
    viewer.worker=worker;
    viewer.key=decodeKey(publicKey);
    viewer.subscription=await worker.pushManager.getSubscription();
@@ -77,15 +92,42 @@ export function setupPush({api,registration}){
   }catch(error){viewer.message=error.message;}
   finally{viewer.busy=false;if(account===viewer) render();}
  });
+ navigator.serviceWorker?.addEventListener('message',event=>{
+  if(!account||event.data?.type!=='bootcamp-push-test-received') return;
+  account.receivedTag=event.data.tag;
+  if(account.testTag&&account.testTag===account.receivedTag){
+   account.message='Die Testnachricht wurde auf diesem Gerät angezeigt.';
+   render();
+  }
+ });
  test.addEventListener('click',async()=>{
   const viewer=account;
   if(viewer?.busy||!viewer?.active||!viewer.subscription) return;
   viewer.busy=true;
-  viewer.message='';
+  viewer.testTag=undefined;
+  viewer.message='Testnachricht wird gesendet …';
   render();
   try{
    await updateDevice('test',viewer.subscription);
-   viewer.message='Testnachricht angefordert. Sie sollte innerhalb einer Minute ankommen.';
+   for(let attempt=0;attempt<15&&account===viewer;attempt++){
+    const {state,tag}=await updateDevice('test-status',viewer.subscription);
+    viewer.testTag=tag;
+    if(tag&&viewer.receivedTag===tag){viewer.message='Die Testnachricht wurde auf diesem Gerät angezeigt.';return;}
+    if(state==='missing'){
+     viewer.active=false;
+     await viewer.subscription.unsubscribe().catch(()=>{});
+     viewer.subscription=null;
+     viewer.message='Die Gerätefreigabe ist abgelaufen. Aktiviere Push erneut.';
+     return;
+    }
+    if(state==='failed'){viewer.message='Der Push-Dienst hat die Testnachricht nicht angenommen. Versuche es erneut.';return;}
+    if(state==='accepted'){
+     viewer.message='Der Push-Dienst hat die Testnachricht angenommen. Prüfe die Benachrichtigungsleiste.';
+     return;
+    }
+    if(attempt<14) await wait(5000);
+   }
+   viewer.message='Die Testnachricht wartet noch auf den Versand. Prüfe gleich deine Benachrichtigungen.';
   }catch(error){viewer.message=error.message;}
   finally{viewer.busy=false;if(account===viewer) render();}
  });
