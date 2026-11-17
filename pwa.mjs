@@ -3,12 +3,6 @@ export function setupInstallableApp(hasPendingChanges){
  const installed=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true||query.get('app')==='1';
  const preview=query.get('install')==='1';
  document.querySelector('#install-nav').hidden=installed;
- if(installed||preview){
-  const manifest=document.createElement('link');
-  manifest.rel='manifest';
-  manifest.href='./app.webmanifest';
-  document.head.append(manifest);
- }
 
  const installPanel=document.querySelector('#app-install');
  const installGuide=document.querySelector('#app-install-guide');

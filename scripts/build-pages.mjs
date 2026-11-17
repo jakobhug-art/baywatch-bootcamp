@@ -22,6 +22,8 @@ const policy=[
 const metadata=[
  '<meta name="bootcamp-api" content="'+api+'">',
  '<meta name="bootcamp-key" content="'+key+'">',
+ '<link rel="manifest" href="./app.webmanifest">',
+ '<link rel="icon" type="image/png" sizes="192x192" href="./bootcamp-brandung-192.png">',
  '<link rel="apple-touch-icon" href="./bootcamp-brandung-192.png">',
  '<meta http-equiv="Content-Security-Policy" content="'+policy+'">',
 ].join('\n ');
