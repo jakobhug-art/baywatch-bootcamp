@@ -15,6 +15,10 @@ function workerReady(worker){
 
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
+function isPushServiceError(error){
+ return error.name==='NetworkError'||/^Registration failed(?: - (?:push service (?:error|not available)|could not connect to push server))?$/i.test(error.message);
+}
+
 export function setupPush({api,registration}){
  const enable=document.querySelector('#push-enable');
  const disable=document.querySelector('#push-disable');
@@ -72,11 +76,26 @@ export function setupPush({api,registration}){
   viewer.message='';
   render();
   try{
-   const subscription=viewer.subscription??await viewer.worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:viewer.key});
+   let subscription=viewer.subscription;
+   if(!subscription){
+    const options={userVisibleOnly:true,applicationServerKey:viewer.key};
+    try{
+     subscription=await viewer.worker.pushManager.subscribe(options);
+    }catch(error){
+     if(!isPushServiceError(error)||Notification.permission!=='granted') throw error;
+     await wait(1200);
+     if(account!==viewer) return;
+     subscription=await viewer.worker.pushManager.subscribe(options);
+    }
+   }
    if(account!==viewer){await subscription.unsubscribe();return;}
    viewer.subscription=subscription;
    viewer.active=(await updateDevice('enable',subscription)).active;
-  }catch(error){viewer.message=error.name==='NotAllowedError'?'Die Push-Freigabe wurde nicht erteilt.':error.message;}
+  }catch(error){
+   viewer.message=error.name==='NotAllowedError'?'Die Push-Freigabe wurde nicht erteilt.':
+    isPushServiceError(error)?'Der Push-Dienst deines Browsers konnte dieses Gerät nicht anmelden. Prüfe deine Internetverbindung und versuche es erneut.':
+     error.message;
+  }
   finally{viewer.busy=false;if(account===viewer) render();}
  });
  disable.addEventListener('click',async()=>{
