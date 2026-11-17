@@ -22,7 +22,7 @@ const policy=[
 const metadata=[
  '<meta name="bootcamp-api" content="'+api+'">',
  '<meta name="bootcamp-key" content="'+key+'">',
- '<link rel="apple-touch-icon" href="./bootcamp-icon-192.png">',
+ '<link rel="apple-touch-icon" href="./bootcamp-brandung-192.png">',
  '<meta http-equiv="Content-Security-Policy" content="'+policy+'">',
 ].join('\n ');
 const source=readFileSync('index.html','utf8');
@@ -43,5 +43,5 @@ for(const [asset,sourceFile] of Object.entries(browserModules)){
  });
  writeFileSync('dist/'+asset,script);
 }
-for(const asset of ['style.css','app.webmanifest','bootcamp-192.png','bootcamp-512.png','bootcamp-icon-192.png','bootcamp-icon-512.png']) copyFileSync(asset,'dist/'+asset);
+for(const asset of ['style.css','app.webmanifest','bootcamp-192.png','bootcamp-512.png','bootcamp-icon-192.png','bootcamp-icon-512.png','bootcamp-brandung-192.png','bootcamp-brandung-512.png']) copyFileSync(asset,'dist/'+asset);
 writeFileSync('dist/sw.js',readFileSync('sw.js','utf8').replace('__BOOTCAMP_VERSION__',version));

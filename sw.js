@@ -11,7 +11,7 @@ self.addEventListener('push',event=>{
  try{data=event.data?.json();}catch{}
  const notification=self.registration.showNotification('Baywatch Bootcamp',{
   body:data?.body||'Du hast eine neue Nachricht von Bootcamp.',
-  icon:new URL('./bootcamp-icon-192.png',self.registration.scope).href,
+  icon:new URL('./bootcamp-brandung-192.png',self.registration.scope).href,
   tag:data?.tag,
   data:{url:data?.url}
  });
