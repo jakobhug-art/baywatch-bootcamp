@@ -360,6 +360,7 @@ form .challenge-enabled input{width:auto}
 .skip-status{margin:0 0 14px;color:var(--muted)}
 .skip-exercise{align-self:flex-start;padding:2px 0;border:0;background:transparent;color:var(--muted);font-size:13px;text-align:left}
 .skip-exercise:hover{color:var(--tone);text-decoration:underline}
+.training-credit{color:var(--tone);font-weight:700}
 .skip-actions{display:flex;flex-wrap:wrap;gap:8px}
 #skip-error{color:var(--pink)}
 .photo-form select{min-width:0;max-width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#20202c;color:var(--text);font:inherit}

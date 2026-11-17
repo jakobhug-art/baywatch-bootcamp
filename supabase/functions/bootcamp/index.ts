@@ -249,7 +249,7 @@ Deno.serve(async (request) => {
     }
 
     if (!["/quantity", "/workout/finish", "/mark", "/reports", "/reports/status", "/admin/reset-points",
-      "/wheel/spin", "/wheel/complete", "/wheel/scratch", "/workout/skip", "/food-polls", "/food-polls/vote",
+      "/wheel/spin", "/wheel/complete", "/wheel/scratch", "/workout/skip", "/workout/training", "/food-polls", "/food-polls/vote",
       "/coins/buy", "/coins/respond", "/admin/media/delete", "/admin/challenges", "/admin/members", "/chat", "/chat/pin",
       "/profile", "/profile/password", "/push/device"].includes(path ?? "")) return json({ error: "Seite nicht gefunden." }, 404);
     if (!token) return json({ error: "Bitte melde dich an." }, 401);
@@ -324,6 +324,9 @@ Deno.serve(async (request) => {
     }
     if (path === "/workout/skip" && typeof input.day === "string" && isoDay.test(input.day) && typeof input.exercise === "string") {
       return rpc("bootcamp_choose_skip", { p_user: data.user.id, p_day: input.day, p_exercise: input.exercise });
+    }
+    if (path === "/workout/training" && typeof input.day === "string" && isoDay.test(input.day) && typeof input.exercise === "string") {
+      return rpc("bootcamp_replace_with_training", { p_user: data.user.id, p_day: input.day, p_exercise: input.exercise });
     }
     if (path === "/food-polls") {
       if (typeof input.id !== "string" || !uuid.test(input.id) || typeof input.target !== "string" || !uuid.test(input.target)) {

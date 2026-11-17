@@ -76,8 +76,13 @@ const availableTickets=db.prepare(`SELECT day,turn,ticket,symbols,claimed_on FRO
  WHERE user_id=? AND day=? ORDER BY turn,ticket`);
 db.exec(`CREATE TABLE IF NOT EXISTS daily_skips(
  user_id INTEGER NOT NULL REFERENCES users(id),day TEXT NOT NULL,exercise TEXT NOT NULL,PRIMARY KEY(user_id,day)
+);
+CREATE TABLE IF NOT EXISTS training_replacements(
+ user_id INTEGER NOT NULL,day TEXT NOT NULL,exercise TEXT NOT NULL,PRIMARY KEY(user_id,day),
+ FOREIGN KEY(user_id,day) REFERENCES daily_skips(user_id,day) ON DELETE CASCADE
 )`);
 const selectedSkip=db.prepare('SELECT exercise FROM daily_skips WHERE user_id=? AND day=?');
+const selectedTraining=db.prepare('SELECT exercise FROM training_replacements WHERE user_id=? AND day=?');
 const defaultSkip=deck=>deck.daily.length>1&&deck.daily.some(card=>card.id==='jogging')?'jogging':null;
 const challenges=setupChallenges(db,fail);
 const coins=setupCoins(db,fail);
@@ -245,6 +250,8 @@ createServer(async (req,res)=>{
    if(!member) fail(404,'Mitglied nicht gefunden.');
    const amounts=new Map(db.prepare('SELECT exercise,amount FROM quantities WHERE user_id=? AND day=?')
     .all(memberId,deck.day).map(({exercise,amount})=>[exercise,amount]));
+   const skipped=selectedSkip.get(memberId,deck.day)?.exercise??defaultSkip(deck);
+   const training=selectedTraining.get(memberId,deck.day)?.exercise;
    const weeklyDone=new Set(db.prepare(`
     SELECT exercise FROM marks WHERE user_id=? AND period=week AND week=?
    `).all(memberId,deck.week).map(({exercise})=>exercise));
@@ -253,7 +260,7 @@ createServer(async (req,res)=>{
     balance:coins.balance(memberId),
     rest:Boolean(db.prepare('SELECT 1 FROM rest_days WHERE user_id=? AND day=?').get(memberId,deck.day)),
     daily:deck.daily.map(({id,name,unit,target})=>({name,unit,target,amount:amounts.get(id)??0,
-     skipped:id===(selectedSkip.get(memberId,deck.day)?.exercise??defaultSkip(deck))})),
+     skipped:id===skipped,trainingReplaced:id===training})),
     weekly:deck.weekly.filter(([id])=>weeklyDone.has(id)).map(([, ,name])=>name)
    });
   }
@@ -316,6 +323,23 @@ createServer(async (req,res)=>{
     if(!defaultSkip(deck) || !deck.daily.some(card=>card.id===input.exercise)) fail(400,'Wähle eine Tagesübung zum Streichen.');
     if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
     db.prepare('INSERT INTO daily_skips VALUES(?,?,?)').run(user.id,deck.day,input.exercise);
+   });
+   return reply({ok:true});
+  }
+  if(req.method==='POST' && path==='/api/workout/training'){
+   if(!user) fail(401,'Bitte melde dich an.');
+   const input=await body(req);
+   if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
+   coins.transaction(()=>{
+    const chosen=selectedTraining.get(user.id,deck.day);
+    if(chosen && chosen.exercise===input.exercise) return;
+    if(chosen) fail(409,'Du hast heute bereits eine Übung durch Training ersetzt.');
+    if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
+    const skipped=selectedSkip.get(user.id,deck.day)?.exercise;
+    if(!skipped) fail(409,'Streiche zuerst eine Übung für heute.');
+    if(db.prepare('SELECT 1 FROM rest_days WHERE user_id=? AND day=?').get(user.id,deck.day)) fail(409,'Für heute ist bereits ein freier Tag aktiv.');
+    if(input.exercise===skipped||!deck.daily.some(card=>card.id===input.exercise)) fail(400,'Wähle eine verbleibende Tagesübung.');
+    db.prepare('INSERT INTO training_replacements VALUES(?,?,?)').run(user.id,deck.day,input.exercise);
    });
    return reply({ok:true});
   }
@@ -382,6 +406,7 @@ createServer(async (req,res)=>{
    if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
    if(!exercise || !Number.isInteger(input.amount) || input.amount<0 || input.amount>10000) fail(400,'Gib eine ganze Zahl zwischen 0 und 10.000 ein.');
    if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
+   if(selectedTraining.get(user.id,deck.day)?.exercise===exercise.id) fail(409,'Diese Übung wurde heute durch Training ersetzt.');
    db.prepare(`
     INSERT INTO quantities VALUES(?,?,?,?,?,?)
     ON CONFLICT(user_id,day,exercise) DO UPDATE SET amount=excluded.amount,points=excluded.points,reached=excluded.reached
@@ -416,6 +441,7 @@ createServer(async (req,res)=>{
    })):[];
    return reply({deck,user:user||null,marks,quantities,activeDays,...standings,spins,scratchTickets,
     defaultSkip:defaultSkip(deck),skippedExercise:user?selectedSkip.get(user.id,deck.day)?.exercise??null:null,
+    trainingExercise:user?selectedTraining.get(user.id,deck.day)?.exercise??null:null,
     workoutFinished:spins.length>0,coins:user?coins.state(user.id,deck.day,Boolean(user.admin)):null});
   }
   fail(404,'Seite nicht gefunden.');
