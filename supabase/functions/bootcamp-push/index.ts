@@ -13,7 +13,7 @@ const digest = (value: string) => createHash("sha256").update(value).digest();
 
 type Job = {
   id: string;
-  kind: "reminder" | "friend" | "test";
+  kind: "reminder" | "friend" | "test" | "chat";
   body: string;
   attempts: number;
   endpoint: string;
@@ -23,11 +23,11 @@ type Job = {
 
 async function send(job: Job) {
   if (!isPushEndpoint(job.endpoint)) return { result: "expired", status: null };
-  const url = job.kind === "friend" ? "#rangliste" : job.kind === "reminder" ? "#heute" : "#profil";
+  const routes = { friend: "#rangliste", reminder: "#heute", test: "#profil", chat: "#chat" };
   try {
     const request = webPush.generateRequestDetails(
       { endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } },
-      JSON.stringify({ body: job.body, url, kind: job.kind, tag: "bootcamp-" + job.id }),
+      JSON.stringify({ body: job.body, url: routes[job.kind], kind: job.kind, tag: "bootcamp-" + job.id }),
       { vapidDetails: { subject, publicKey: publicKey!, privateKey: privateKey! }, TTL: job.kind === "test" ? 300 : 3600,
         contentEncoding: "aes128gcm", urgency: "high" },
     );

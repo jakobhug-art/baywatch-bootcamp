@@ -176,12 +176,18 @@ export function setupGroupChat(api){
   dialog.showModal();
   load({bottom:true});
  }
+ function openLinkedChat(){
+  if(!account||location.hash!=='#chat') return;
+  history.replaceState(history.state,'','#start');
+  openChat();
+ }
  function refreshChat(){
   if(!account||document.hidden) return;
   if(!dialog.open) checkUnread();
   else if(!writing&&!more.disabled) load({quiet:true});
  }
  for(const opener of openers) opener.addEventListener('click',openChat);
+ window.addEventListener('hashchange',openLinkedChat);
  document.addEventListener('visibilitychange',refreshChat);
  window.addEventListener('online',refreshChat);
  dialog.querySelector('#chat-close').addEventListener('click',()=>dialog.close());
@@ -233,5 +239,6 @@ export function setupGroupChat(api){
     timer=setInterval(refreshChat,10000);
    }
   }
+  openLinkedChat();
  };
 }

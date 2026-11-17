@@ -283,8 +283,13 @@ Deno.serve(async (request) => {
         if (typeof input.morningReminder !== "boolean" || typeof input.eveningReminder !== "boolean") {
           return json({ error: "Prüfe deine Einstellungen." }, 400);
         }
-        return rpc("bootcamp_save_fixed_push_profile", { p_user: data.user.id, p_birth: input.birthDate,
-          p_show: input.showBirthday, p_morning: input.morningReminder, p_evening: input.eveningReminder, p_friends: input.friendNotifications });
+        const settings = { p_user: data.user.id, p_birth: input.birthDate, p_show: input.showBirthday,
+          p_morning: input.morningReminder, p_evening: input.eveningReminder, p_friends: input.friendNotifications };
+        if ("chatNotifications" in input) {
+          if (typeof input.chatNotifications !== "boolean") return json({ error: "Prüfe deine Einstellungen." }, 400);
+          return rpc("bootcamp_save_chat_push_profile", { ...settings, p_chat: input.chatNotifications });
+        }
+        return rpc("bootcamp_save_fixed_push_profile", settings);
       }
       if (typeof input.workoutReminders !== "boolean" || typeof input.reminderTime !== "string"
         || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.reminderTime)) return json({ error: "Prüfe deine Einstellungen." }, 400);
