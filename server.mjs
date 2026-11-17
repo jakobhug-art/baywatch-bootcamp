@@ -116,6 +116,7 @@ if(process.argv[2]==='--grant-admin'){
 }
 const hash = value => createHash('sha256').update(value).digest('hex');
 const assets = new Map([['/',['index.html','text/html']],['/style.css',['style.css','text/css']],
+ ['/bootcamp-brandung-192.png',['bootcamp-brandung-192.png','image/png']],
  ...Object.entries(browserModules).map(([name,source])=>['/'+name,[source,'text/javascript']])]);
 const attempts = new Map();
 const resetAttempts = new Map();
@@ -149,7 +150,7 @@ createServer(async (req,res)=>{
  try {
   if(req.method==='GET' && assets.has(path)){
    const [file,type]=assets.get(path);
-   res.writeHead(200,{'Content-Type':type+'; charset=utf-8'});
+   res.writeHead(200,{'Content-Type':type.startsWith('text/')?type+'; charset=utf-8':type});
    return res.end(readFileSync(new URL(file,import.meta.url)));
   }
   if(req.method==='POST' && !req.headers['content-type']?.startsWith('application/json')) fail(415,'JSON erforderlich.');

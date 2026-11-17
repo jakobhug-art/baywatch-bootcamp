@@ -20,9 +20,9 @@ button[aria-busy="true"]{cursor:wait}
 .shell{width:min(1180px,calc(100% - 64px));margin-inline:auto}
 .top{border-bottom:1px solid #242432;background:#101017}
 .top-inner{height:74px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.brand{display:inline-flex;align-items:center;gap:2px;font:700 25px/1 "Space Grotesk",system-ui;letter-spacing:-1.3px}
+.brand{display:inline-flex;align-items:center;gap:8px;font:700 25px/1 "Space Grotesk",system-ui;letter-spacing:-1.3px}
 .brand span{color:var(--lime)}
-.brand .brand-icon{display:grid;place-items:center;width:32px;height:32px;margin-right:8px;background:var(--lime);color:#161a10;border-radius:9px;font-size:21px}
+.brand .brand-icon{display:block;flex:none;width:36px;height:auto;border-radius:9px}
 nav{display:flex;gap:28px;color:var(--muted);font-size:14px}
 nav a:hover{color:var(--lime)}
 .outline,.primary,.pill{border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-weight:700}
@@ -252,9 +252,9 @@ form .challenge-enabled{display:flex;align-items:center;gap:8px}
 form .challenge-enabled input{width:auto}
 .segments{flex-wrap:wrap}
 #points-reset{max-width:420px}
-.header-brand .brand-copy{display:grid;gap:4px;color:var(--text)}
+.header-brand .brand-copy{display:grid;min-width:0;gap:4px;color:var(--text);overflow-wrap:anywhere}
 .header-brand small{color:var(--muted);font:600 11px/1.2 "DM Sans",system-ui,sans-serif;letter-spacing:0}
-@media(max-width:380px){.header-brand .brand-icon{display:none}.header-brand small{font-size:10px}}
+@media(max-width:380px){.top-inner .header-brand{font-size:18px}.header-brand .brand-icon{width:28px}.header-brand small{font-size:10px}}
 .app-version{white-space:nowrap}
 #chat-open{position:relative;border:0;padding:0;background:transparent;color:inherit;font:inherit}
 #chat-open:hover{color:var(--lime)}
