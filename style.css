@@ -343,6 +343,11 @@ form .challenge-enabled input{width:auto}
 @media(max-width:650px){.hero-users{justify-self:center}}
 .sign-in-panel{margin-block:44px;padding:clamp(24px,6vw,64px)}
 .sign-in-panel h1{font-size:clamp(2rem,5vw,3.4rem)}
+.app-startup{display:grid;justify-items:center;gap:12px;width:min(460px,calc(100% - 32px));margin-block:clamp(56px,12vh,128px);padding:24px;text-align:center}
+.app-startup p{margin:0}
+.startup-spinner{width:24px;height:24px;border:2px solid var(--line);border-top-color:var(--lime);border-radius:50%;animation:startup-spin .8s linear infinite}
+@keyframes startup-spin{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){.startup-spinner{animation:none}}
 .counter-fields{display:contents}
 .workout-card{--tone:#8dafff}
 .workout-card .primary{margin-top:auto;background:var(--tone)}

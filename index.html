@@ -30,7 +30,7 @@
     </div>
    </details>
   </nav>
-  <button class="outline" id="account">Anmelden</button>
+  <button class="outline" id="account" hidden>Anmelden</button>
  </div></header>
  <p id="notice" class="shell" role="status" hidden></p>
  <div class="shell app-update" id="app-update" hidden>
@@ -42,7 +42,12 @@
   <p id="app-install-guide"></p>
   <button class="primary" id="app-install-button" type="button" hidden>App installieren</button>
  </section>
- <section class="shell panel sign-in-panel" id="sign-in-panel">
+ <section class="shell panel app-startup" id="app-startup" aria-label="App-Start">
+  <span class="startup-spinner" id="startup-spinner" aria-hidden="true"></span>
+  <p id="startup-status" role="status">Baywatch Bootcamp wird geladen …</p>
+  <button class="outline" id="startup-retry" type="button" hidden>Erneut versuchen</button>
+ </section>
+ <section class="shell panel sign-in-panel" id="sign-in-panel" hidden>
   <h1>Willkommen bei Baywatch Bootcamp</h1>
   <p>Melde dich an oder erstelle mit deinem Einladungscode ein Konto.</p>
  </section>
@@ -393,7 +398,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.60</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.61</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>

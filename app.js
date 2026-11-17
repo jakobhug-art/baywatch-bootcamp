@@ -905,6 +905,7 @@ async function refresh() {
  for(const element of document.querySelectorAll('[data-member]')) element.hidden=!signedIn;
  $('#sign-in-panel').hidden=signedIn;
  $('#account').textContent=signedIn?'Abmelden':'Anmelden';
+ $('#account').hidden=false;
  renderScratchTickets();
  syncGroupChat(cloudUrl?state.user:null);
  syncFoodPolls();
@@ -1308,7 +1309,27 @@ $('#report-list').addEventListener('click',async event=>{
  } catch(error){setError('#report-status',error.message);}
  finally{actions.forEach(action=>action.disabled=false);}
 });
+const startup=$('#app-startup');
+const startupStatus=$('#startup-status');
+const startupSpinner=$('#startup-spinner');
+const startupRetry=$('#startup-retry');
+
+async function startApp(){
+ startupStatus.textContent='Baywatch Bootcamp wird geladen …';
+ startupSpinner.hidden=false;
+ startupRetry.hidden=true;
+ try{
+  await refresh();
+  startup.hidden=true;
+ }catch(error){
+  startupStatus.textContent=error.message;
+  startupSpinner.hidden=true;
+  startupRetry.hidden=false;
+ }
+}
+
 if(location.protocol==='file:'){
+ startup.hidden=true;
  const notice=$('#notice');
  const link=document.createElement('a');
  link.href='http://127.0.0.1:3000/';
@@ -1316,7 +1337,8 @@ if(location.protocol==='file:'){
  notice.append(link);
  notice.hidden=false;
 } else {
- refresh().catch(error=>setError('#notice',error.message));
+ startupRetry.addEventListener('click',startApp);
+ startApp();
 }
 const coinForm=$('#coin-form');
 const coinKinds={voice:'Sprachnachricht',symbol:'Symbol-Prank',exercise:'Extraübung',return:'Retourkutsche',nickname:'Namenszusatz'};
