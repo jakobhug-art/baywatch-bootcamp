@@ -198,8 +198,11 @@ body:has(#wheel-dialog[open]){overflow:hidden}
 #wheel-result>div+div{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
 .prank-symbols{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:8px;background:#27213a;border-radius:12px}
 .prank-symbol{position:relative;display:block;font-size:clamp(48px,6vw,72px);line-height:1.1}
-.prank-symbol:only-child{font-size:clamp(48px,8vw,86px)}
+.prank-symbol-group:only-child .prank-symbol{font-size:clamp(48px,8vw,86px)}
 .prank-symbol small{position:absolute;right:-3px;bottom:0;padding:2px 5px;border-radius:999px;background:#101017;color:#fff;font-size:.875rem;font-weight:700}
+.prank-symbol-group{display:grid;justify-items:center;gap:5px;min-width:0;max-width:100%}
+.prank-sender{font-size:12px;line-height:1.3;color:var(--muted);text-align:center;overflow-wrap:anywhere}
+#received-pranks-list{max-height:min(24rem,55vh);overflow-y:auto;overflow-wrap:anywhere}
 #coin-area select,#coin-inbox select{max-width:100%;padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px}
 #coin-area audio{display:block;max-width:100%;margin-top:8px}
 #coin-area details{margin-top:14px}

@@ -355,13 +355,15 @@ async function api(path, payload) {
 }
 
 function dailyPrankSymbols(items,userId){
- const counts=new Map();
- for(const {kind,recipient,detail} of items){
-  if(kind==='symbol'&&recipient===userId) counts.set(detail,(counts.get(detail)||0)+1);
+ const symbols=new Map();
+ for(const {kind,recipient,detail,fromName} of items){
+  if(kind!=='symbol'||recipient!==userId) continue;
+  if(!symbols.has(detail)) symbols.set(detail,[]);
+  symbols.get(detail).push(fromName);
  }
- if(!counts.size) return '';
- return `<div class="prank-symbols" role="group" aria-label="Aktive Symbol-Pranks">${[...counts].map(([symbol,count])=>
-  `<span class="prank-symbol">${escapeHtml(symbol)}${count>1?`<small>×${count}</small>`:''}</span>`
+ if(!symbols.size) return '';
+ return `<div class="prank-symbols" role="group" aria-label="Aktive Symbol-Pranks">${[...symbols].map(([symbol,names])=>
+  `<div class="prank-symbol-group"><span class="prank-symbol">${escapeHtml(symbol)}${names.length>1?`<small>×${names.length}</small>`:''}</span><span class="prank-sender">Von ${[...new Set(names)].map(escapeHtml).join(', ')}</span></div>`
  ).join('')}</div>`;
 }
 
@@ -376,6 +378,12 @@ function render() {
  const amounts = visibleAmounts();
  const rest=Boolean(coins?.rest);
  const symbols=dailyPrankSymbols(coins?.items||[],user.id);
+ const received=coins?.items.filter(item=>item.recipient===user.id)||[];
+ const receivedPanel=$('#received-pranks');
+ receivedPanel.hidden=!received.length;
+ $('#received-pranks-heading').textContent='Pranks gegen dich · '+received.length;
+ clearVoiceList($('#received-pranks-list'));
+ $('#received-pranks-list').append(...received.map(item=>prankCard(item,coins,user.id,'#received-pranks-status')));
  const savedAmounts=new Map(quantities.map(item=>[item.exercise,item.amount]));
  const unlocked=cloudUrl?state.workoutFinished||state.birthdayWheelUnlocked||state.spins.length>0:Boolean(!state.defaultSkip||state.skippedExercise)&&(rest||deck.daily.every(item=>item.id===(state.skippedExercise||state.defaultSkip)||item.id===state.trainingExercise||(savedAmounts.get(item.id)||0)>=item.target));
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
@@ -1516,11 +1524,11 @@ function prankCard(item,wallet,owner,statusTarget='#coin-status'){
   const card=document.createElement('article');
   card.className='report-card';
   const title=document.createElement('h4');
-  title.textContent=coinKinds[item.kind]+' · '+item.fromName+' → '+item.toName;
+  title.textContent=coinKinds[item.kind]+' · '+(incoming?'Von '+item.fromName:item.fromName+' → '+item.toName);
   card.append(title);
-  if(item.kind==='voice' && (incoming || outgoing || item.day>=state.season.start)){
+  if(item.kind==='voice' && state.user.admin && (incoming || outgoing || item.day>=state.season.start)){
    const path=(incoming||outgoing?'voice/':'voice-archive/')+item.id;
-   addVoicePlayer(card,path,{label:'Sprachnachricht abspielen',status:'#coin-status'});
+   addVoicePlayer(card,path,{label:'Sprachnachricht abspielen',status:statusTarget});
   } else if(item.kind!=='voice') {
    const detail=document.createElement('p');
    const text=item.kind==='nickname'?'„'+item.detail+'“':item.detail;

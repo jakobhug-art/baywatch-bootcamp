@@ -69,7 +69,7 @@ export function setupCoins(db,fail){
   `).all(user,day,day);
   const week=weekStart(day);
   const items=active.filter(item=>isAdmin?item.sender===user||item.recipient===user:
-   item.recipient===user&&(item.kind==='symbol'||(['exercise','return'].includes(item.kind)&&item.status!=='declined'&&!item.recipient_done)) ||
+   item.recipient===user&&(['symbol','nickname','voice'].includes(item.kind)||(['exercise','return'].includes(item.kind)&&item.status!=='declined'&&!item.recipient_done)) ||
    item.sender===user&&item.kind==='return'&&item.status==='accepted'&&!item.sender_done);
   const groupPranks=isAdmin?active.filter(item=>item.day>=week&&item.status!=='declined'&&
    (!item.recipient_done||item.kind==='return'&&!item.sender_done)):[];
