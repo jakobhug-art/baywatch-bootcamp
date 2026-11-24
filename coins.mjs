@@ -24,6 +24,9 @@ export function setupCoins(db,fail){
  if(!db.prepare('PRAGMA table_info(rest_days)').all().some(column=>column.name==='base_only')){
   db.exec('ALTER TABLE rest_days ADD COLUMN base_only INTEGER NOT NULL DEFAULT 0');
  }
+ if(!db.prepare('PRAGMA table_info(pranks)').all().some(column=>column.name==='mandatory')){
+  db.exec('ALTER TABLE pranks ADD COLUMN mandatory INTEGER NOT NULL DEFAULT 0');
+ }
  db.exec(`
   DROP VIEW IF EXISTS effective_quantities;
   CREATE VIEW effective_quantities AS
@@ -68,7 +71,7 @@ export function setupCoins(db,fail){
  }
  function state(user,day,isAdmin=false){
   const active=db.prepare(`
-   SELECT p.id,p.kind,p.detail,p.day,p.expires,p.status,p.sender_done,p.recipient_done,
+   SELECT p.id,p.kind,p.detail,p.day,p.expires,p.status,p.sender_done,p.recipient_done,p.mandatory,
     p.sender,p.recipient,s.handle AS fromName,r.handle AS toName,
     p.recipient=? AND p.kind<>'return' AND NOT EXISTS(SELECT 1 FROM pranks child WHERE child.source=p.id) AS canReturn
    FROM pranks p JOIN users s ON s.id=p.sender JOIN users r ON r.id=p.recipient
@@ -76,8 +79,8 @@ export function setupCoins(db,fail){
   `).all(user,day,day);
   const week=weekStart(day);
   const items=active.filter(item=>isAdmin?item.sender===user||item.recipient===user:
-   item.recipient===user&&(['symbol','nickname','voice'].includes(item.kind)||(['exercise','return'].includes(item.kind)&&item.status!=='declined'&&!item.recipient_done)) ||
-   item.sender===user&&item.kind==='return'&&item.status==='accepted'&&!item.sender_done);
+   item.recipient===user&&(['symbol','nickname','voice'].includes(item.kind)||(['exercise','return'].includes(item.kind)&&item.status!=='declined'&&(item.mandatory||!item.recipient_done))) ||
+   item.sender===user&&item.kind==='return'&&item.status==='accepted'&&(item.mandatory||!item.sender_done));
   const groupPranks=isAdmin?active.filter(item=>item.day>=week&&item.status!=='declined'&&
    (!item.recipient_done||item.kind==='return'&&!item.sender_done)):[];
   const nicknames=Object.fromEntries(active.filter(item=>item.kind==='nickname').reverse().map(item=>[item.recipient,item.detail]));
@@ -149,7 +152,14 @@ export function setupCoins(db,fail){
     end.setUTCDate(end.getUTCDate()+6);
     expires=end.toISOString().slice(0,10);
    }
-   db.prepare('INSERT INTO pranks(sender,recipient,kind,detail,day,expires,source,audio) VALUES(?,?,?,?,?,?,?,?)').run(user,recipient,prankKind,detail,day,expires,source,audio);
+   const mandatory=['exercise','return'].includes(kind);
+   if(mandatory){
+    const end=new Date(day+'T00:00:00Z');
+    end.setUTCDate(end.getUTCDate()+1);
+    expires=end.toISOString().slice(0,10);
+   }
+   db.prepare('INSERT INTO pranks(sender,recipient,kind,detail,day,expires,source,audio,mandatory,status) VALUES(?,?,?,?,?,?,?,?,?,?)')
+    .run(user,recipient,prankKind,detail,day,expires,source,audio,Number(mandatory),mandatory?'accepted':'pending');
    const labels={voice:'Sprachnachricht',symbol:'Symbol-Prank',exercise:'Extraübung',return:'Retourkutsche',
     nickname_week:'Namenszusatz · 7 Tage',nickname_season:'Namenszusatz · Season'};
    credit.run(user,-prices[kind],labels[kind],day);
@@ -157,9 +167,9 @@ export function setupCoins(db,fail){
  }
  function respond(user,input,day){
   if(!Number.isSafeInteger(input?.id)) fail(400,'Ungültige Challenge.');
-  const prank=db.prepare("SELECT * FROM pranks WHERE id=? AND kind IN ('exercise','return') AND expires>=?").get(input.id,day);
+  const prank=db.prepare("SELECT * FROM pranks WHERE id=? AND kind IN ('exercise','return') AND day<=? AND expires>=?").get(input.id,day,day);
   if(!prank || ![prank.sender,prank.recipient].includes(user)) fail(404,'Challenge nicht gefunden.');
-  if(['accept','decline'].includes(input.action)&&user===prank.recipient&&prank.status==='pending'){
+  if(!prank.mandatory&&['accept','decline'].includes(input.action)&&user===prank.recipient&&prank.status==='pending'){
    db.prepare('UPDATE pranks SET status=? WHERE id=?').run(input.action==='accept'?'accepted':'declined',prank.id);
    return;
   }

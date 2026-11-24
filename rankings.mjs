@@ -34,6 +34,10 @@ export function setupRankings(db,{legacyCount,monthTarget,monthBonus,rewardsStar
   FROM marks m LEFT JOIN weekly_point_dates d USING(user_id,week,exercise) WHERE m.period=m.week
   UNION ALL SELECT user_id,day,'wheel:'||turn,CASE WHEN completed=1 THEN reward ELSE initial END FROM wheel_spins
   UNION ALL SELECT user_id,day,'monthly',? FROM numbered WHERE number=?
+  UNION ALL SELECT recipient,date(expires,'+1 day'),'prank_penalty:'||id,-60
+   FROM pranks WHERE mandatory=1 AND kind IN ('exercise','return') AND recipient_done=0
+  UNION ALL SELECT sender,date(expires,'+1 day'),'prank_penalty:'||id,-60
+   FROM pranks WHERE mandatory=1 AND kind='return' AND sender_done=0
  `);
  const users=db.prepare('SELECT id,handle FROM users ORDER BY handle COLLATE NOCASE');
  const latest=db.prepare('SELECT id,day FROM point_resets WHERE day<=? ORDER BY id DESC LIMIT 1');

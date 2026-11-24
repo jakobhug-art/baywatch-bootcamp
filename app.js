@@ -394,17 +394,6 @@ function render() {
  $('#date').textContent = dateFormat.format(new Date(deck.day+'T00:00:00Z'));
  $('#account').textContent = user?'Abmelden':'Anmelden';
  renderDaySummary(amounts);
- const extras=coins?.items.filter(item=>['exercise','return'].includes(item.kind)&&(
-  item.recipient===user.id&&item.status!=='declined'&&!item.recipient_done ||
-  item.sender===user.id&&item.kind==='return'&&item.status==='accepted'&&!item.sender_done
- ))||[];
- const directExtra=$('#daily-extra-card');
- directExtra.hidden=user.admin||!extras.length;
- directExtra.replaceChildren();
- if(!directExtra.hidden) directExtra.append(prankCard(extras[0],coins,user.id,'#daily-extra-status'));
- $('#daily-extra').hidden=!user.admin||!extras.length;
- $('#daily-extra').textContent=extras.length>1?extras.length+' offene Extraübungen · Ansehen'
-  :extras.length?'Extraübung für heute: '+extras[0].detail+' · Ansehen':'';
  $('#week-summary').textContent = marks.length+' / '+deck.weekly.length+' erledigt';
  if(deck.weeklyPoints){
   const {Leicht,Mittel,Schwer}=deck.weeklyPoints;
@@ -477,6 +466,7 @@ function render() {
    ${coins?.vouchers&&!rest&&!state.workoutFinished?'<button class="outline" id="workout-rest-voucher" type="button">Freien Tag für heute einlösen</button>':''}
    <p id="workout-rest-status" class="hint" role="status" hidden></p>
   </article>`:'');
+ renderDailyExtras();
  updateStopwatchControls();
  renderDaySummary(amounts);
  $('#weekly').innerHTML = deck.weekly.map(([id,icon,name,description,points,color,category,difficulty],index)=>{
@@ -838,6 +828,10 @@ async function refreshRankingQuietly(){
   const next=await api('state?birthdays=0');
   if(state!==previous||busy||quantityQueue.size||next.user?.id!==previous.user.id||next.deck.day!==previous.deck.day) return;
   rankingSnapshot=next;
+  if(JSON.stringify(next.coins?.items)!==JSON.stringify(previous.coins?.items)){
+   state.coins=next.coins;
+   renderDailyExtras();
+  }
   if(!document.hidden&&currentView==='heute'&&!memberDialog.open) renderRanking();
  }catch{/* Keep the visible ranking until the next successful refresh. */}
  finally{rankingPending=false;}
@@ -1525,6 +1519,23 @@ function renderCoins(){
  }
 }
 
+function renderDailyExtras(){
+ const owner=state.user?.id;
+ const wallet=state.coins;
+ const daily=$('#daily');
+ for(const card of daily.querySelectorAll('[data-daily-prank]')) card.remove();
+ const extras=wallet?.items.filter(item=>['exercise','return'].includes(item.kind)&&(
+  item.recipient===owner&&item.status!=='declined'&&(item.mandatory||!item.recipient_done)||
+  item.sender===owner&&item.kind==='return'&&item.status==='accepted'&&(item.mandatory||!item.sender_done)
+ ))||[];
+ for(const item of extras){
+  const card=prankCard(item,wallet,owner,'#daily-extra-status');
+  card.classList.add('card','extra-exercise-card');
+  card.dataset.dailyPrank=item.id;
+  daily.insertBefore(card,$('#workout-summary'));
+ }
+}
+
 function prankCard(item,wallet,owner,statusTarget='#coin-status'){
   const incoming=item.recipient===owner;
   const outgoing=item.sender===owner;
@@ -1553,10 +1564,17 @@ function prankCard(item,wallet,owner,statusTarget='#coin-status'){
   if(['exercise','return'].includes(item.kind)){
    const status=document.createElement('p');
    const done=item.kind==='return'?item.sender_done&&item.recipient_done:item.recipient_done;
-   status.textContent=done?'Erledigt':item.status==='accepted'?'Angenommen':item.status==='declined'?'Abgelehnt':'Antwort offen';
+   const ownDone=incoming?item.recipient_done:outgoing&&item.sender_done;
+   status.textContent=item.mandatory?(ownDone?'✓ Für dich erledigt':'Verbindliche Zusatzübung'):done?'Erledigt':item.status==='accepted'?'Angenommen':item.status==='declined'?'Abgelehnt':'Antwort offen';
    if(item.kind==='return'&&item.status==='accepted') status.textContent+=' · '+(Number(item.sender_done)+Number(item.recipient_done))+' / 2 fertig';
    card.append(status);
-   if(incoming&&item.status==='pending'){
+   if(item.mandatory){
+    const deadline=document.createElement('p');
+    deadline.className='hint';
+    deadline.textContent='Bis '+item.expires.split('-').reverse().join('.')+', 23:59 Uhr (Berlin) · bei Versäumnis −60 Punkte pro Person. Keine Zusatzpunkte.';
+    card.append(deadline);
+   }
+   if(incoming&&!item.mandatory&&item.status==='pending'){
     addButton('Annehmen',()=>sendCoin('respond',{id:item.id,action:'accept'},statusTarget));
     addButton('Ablehnen',()=>sendCoin('respond',{id:item.id,action:'decline'},statusTarget));
    }

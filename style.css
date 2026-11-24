@@ -246,7 +246,10 @@ body:has(#wheel-dialog[open]){overflow:hidden}
 .profile-panels form input[type=date],.profile-panels form input[type=time]{width:100%;min-width:0}
 .profile-panels h3:not(:first-child){margin-top:8px}
 #profile-status,#profile-password-status{margin:8px 0 0}
-.daily-extra{display:inline-block;margin-top:12px}
+.extra-exercise-card{--tone:var(--orange);overflow-wrap:anywhere}
+.extra-exercise-card,.extra-exercise-card:last-child{padding:14px;border-bottom:1px solid var(--line)}
+.extra-exercise-card h4{margin:0;font-size:17px}
+.extra-exercise-card p{margin:0}
 #challenge-editor summary{cursor:pointer;font-weight:700}
 #challenge-form{max-width:620px}
 #challenge-form select,#challenge-form textarea{padding:8px;background:#20202c;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
