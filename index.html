@@ -94,6 +94,11 @@
     <li><a class="news-link" href="#gluecksrad">Glücksrad</a> Drehen und zwei Rubbellose holen.</li>
    </ul>
   </aside>
+  <aside class="panel home-food-polls" id="home-food-polls" aria-labelledby="home-food-polls-title" hidden>
+   <h2 id="home-food-polls-title">Offene Fettstrafe-Abstimmungen</h2>
+   <ul id="home-food-poll-list"></ul>
+   <a class="primary" href="#fettstrafe" id="home-food-polls-open">Abstimmungen ansehen</a>
+  </aside>
   <section id="heute" class="section">
    <div class="today-heading"><div><p class="eyebrow accent" id="date"></p><h2>Deine Tageschallenge</h2></div><span class="pill" id="daily-summary">–</span></div>
    <p class="skip-status" id="skip-status" role="status" tabindex="-1" hidden></p>
@@ -173,7 +178,7 @@
     <div class="panel">
      <h3>Münzen einsetzen</h3>
      <form id="coin-form">
-      <label>Aktion<select name="kind"><option value="voice">Sprachnachricht · 2 Münzen</option><option value="symbol">Symbol-Prank · 5 Münzen</option><option value="exercise">Extraübung · 6 Münzen</option><option value="nickname_week">Namenszusatz, 7 Tage · 8 Münzen</option><option value="nickname_season">Namenszusatz bis Season-Ende · 24 Münzen</option><option value="rest">Freier Tag · 12 Münzen</option></select></label>
+      <label>Aktion<select name="kind"><option value="voice">Sprachnachricht · 2 Münzen</option><option value="symbol">Symbol-Prank · 5 Münzen</option><option value="exercise">Extraübung · 6 Münzen</option><option value="nickname_week">Namenszusatz, 7 Tage · 8 Münzen</option><option value="nickname_season">Namenszusatz bis Season-Ende · 24 Münzen</option><option value="rest">Gutschein für einen freien Tag · 12 Münzen</option></select></label>
       <label id="coin-target">Person<select name="target"></select></label>
       <label id="coin-detail" hidden>Auswahl<select name="detail"></select></label>
       <label id="coin-nickname" hidden>Namenszusatz<input name="nickname" minlength="2" maxlength="40" required disabled placeholder="z. B. der Stumpen"><small class="hint" id="nickname-info"></small></label>
@@ -234,6 +239,7 @@
       <label class="challenge-enabled"><input name="eveningReminder" type="checkbox"> 18:00 Uhr · Vergiss deine Übungen nicht</label>
       <label class="challenge-enabled"><input name="friendNotifications" type="checkbox"> Workout-Abschlüsse von Freunden</label>
       <label class="challenge-enabled"><input name="chatNotifications" type="checkbox" checked> Neue Nachrichten im Gruppenchat</label>
+      <label class="challenge-enabled"><input name="foodNotifications" type="checkbox" checked> Neue Fettstrafe-Abstimmungen</label>
       <p class="hint">Die Uhrzeiten gelten täglich in Berliner Zeit. Speichere deine Auswahl und aktiviere Push auf jedem Gerät, auf dem du Benachrichtigungen erhalten möchtest.</p>
       <button class="primary" type="submit">Einstellungen speichern</button>
       <section class="profile-push" aria-labelledby="push-title">
@@ -281,7 +287,7 @@
     <p>Nach dem Workout-Abschluss kannst du freiwillig einmal drehen. Das Rad bringt Gewinne, Verluste, Zusatzaufgaben oder einen Gutschein für einen freien Tag. Mit der Extrarunde darfst du ein zweites Mal drehen. Bei den Münzfeldern gewinnst du 3 oder 7 Münzen oder verlierst bis zu 2 Münzen. Das kleine Goldfeld bringt mit 1 % Chance direkt 15 Münzen.</p>
     <p>Jeder Dreh gibt dir zwei Rubbellose, die bis Mitternacht gültig sind. Drei gleiche Zahlen gewinnen. Die Chancen pro Los sind 63 % für eine Niete, 22 % für 1 Münze, 10 % für 2 Münzen, 4,5 % für 3 Münzen und 0,5 % für 15 Münzen.</p>
     <p>Rad-Aufgaben gelten bis Mitternacht. Bei der Liegestütz-Rettung gleichst du 30 Minuspunkte mit 30 zusätzlichen Liegestützen aus.</p>
-    <p>Für 12 Münzen oder einen Gutschein kannst du den laufenden Tag vor dem Workout-Abschluss freikaufen. Einen Gutschein kannst du direkt unter „Workout abschließen“ einlösen. Du bekommst die regulären Zielpunkte, und der Tag zählt fürs Monatsziel.</p>
+    <p>Für 12 Münzen kaufst du einen Gutschein für einen freien Tag. Du kannst ihn an einem beliebigen Tag vor dem Workout-Abschluss unter „Workout abschließen“ einlösen. An diesem Tag sind die Tagesübungen gesperrt und bringen ihre Grundpunkte ohne Bonus. Der Tag zählt fürs Monatsziel. Schließe ihn wie gewohnt mit oder ohne Foto ab, um Glücksrad und Rubbellose freizuschalten.</p>
     <p>Wenn du die App an deinem Geburtstag öffnest, bekommst du einen Gutschein für einen freien Tag und drei Geburtstagslose.</p>
    </details>
    <details class="panel info-card">
@@ -404,7 +410,7 @@
   </section>
   </div>
  </main>
- <footer class="shell footer"><small class="app-version">Version 0.1.64</small></footer>
+ <footer class="shell footer"><small class="app-version">Version 0.1.65</small></footer>
  <dialog id="chat-dialog" aria-labelledby="chat-title">
   <div class="dialog-heading">
    <h2 id="chat-title">Gruppenchat</h2>

@@ -25,7 +25,7 @@ self.addEventListener('push',event=>{
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
  const route=event.notification.data?.url;
- const hash=['#rangliste','#heute','#profil','#chat'].includes(route)?route:'#start';
+ const hash=['#rangliste','#heute','#profil','#chat','#fettstrafe'].includes(route)?route:'#start';
  const target=new URL(hash,self.registration.scope);
  event.waitUntil((async()=>{
   const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});

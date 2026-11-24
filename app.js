@@ -107,6 +107,7 @@ function updateStopwatch(){
 }
 
 function changeStopwatch(action){
+ if(action==='start'&&(state?.coins?.rest||state?.workoutFinished)) return;
  if(action==='start'){
   if(stopwatchStarted!==null) return;
   stopwatchStarted=performance.now();
@@ -124,7 +125,7 @@ function updateStopwatchControls(){
  const clock=$('#plank-stopwatch');
  if(!clock) return;
  const running=stopwatchStarted!==null;
- clock.querySelector('[data-stopwatch="start"]').setAttribute('aria-disabled',String(running));
+ clock.querySelector('[data-stopwatch="start"]').setAttribute('aria-disabled',String(running||Boolean(state?.coins?.rest||state?.workoutFinished)));
  clock.querySelector('[data-stopwatch="stop"]').setAttribute('aria-disabled',String(!running));
  updateStopwatch();
 }
@@ -141,6 +142,9 @@ function visibleAmounts(){
    const card=state.deck.daily.find(item=>item.id===entry.id);
    if(card) amounts.set(card.id,{amount:entry.amount,points:exercisePoints(card,entry.amount)});
   }
+ }
+ if(state.coins?.rest){
+  for(const card of state.deck.daily) amounts.set(card.id,{amount:card.target,points:exercisePoints(card,card.target)});
  }
  return amounts;
 }
@@ -159,12 +163,12 @@ function renderDaySummary(amounts){
   const base=exercisePoints(card,card.target);
   const replaced=card.id===trainingExercise;
   const result=amounts.get(card.id);
-  const earned=replaced?base:Math.max(result?.points||0,rest?base:0);
+  const earned=rest||replaced?base:result?.points||0;
   if(rest||replaced||(result?.amount||0)>=card.target) reached++;
   earnedBase+=Math.min(earned,base);
   availableBase+=base;
   earnedBonus+=Math.max(0,earned-base);
-  if(!replaced) availableBonus+=exercisePoints(card,card.target*2)-base;
+  if(!rest&&!replaced) availableBonus+=exercisePoints(card,card.target*2)-base;
  }
  const points=earnedBase+earnedBonus+wheelPoints+photoBonus;
  $('#daily-summary').textContent=(rest?'Freier Tag':reached+' / '+counted.length+' Ziele')+' · '+points+' P';
@@ -223,6 +227,7 @@ window.addEventListener('hashchange',()=>{
  syncPortraits();
  syncProfile();
  if(currentView==='heute'&&(previousView!==currentView||currentAnchor==='rangliste')) refreshVisibleSocial();
+ if(currentView==='fettstrafe') syncFoodPolls();
 });
 moreNav.addEventListener('click',event=>{if(event.target.closest('a')) moreNav.open=false;});
 document.addEventListener('click',event=>{if(moreNav.open&&!moreNav.contains(event.target)) moreNav.open=false;});
@@ -407,13 +412,13 @@ function render() {
  }
  $('#info-month-goal').textContent='Das Monatsziel bringt '+deck.monthBonus+' Bonuspunkte für '+deck.monthTarget+' vollständige Trainingstage.';
  const skippedCard=deck.daily.find(item=>item.id===state.skippedExercise);
- const canSkip=Boolean(state.defaultSkip&&!skippedCard&&!state.workoutFinished);
+ const canSkip=Boolean(state.defaultSkip&&!skippedCard&&!state.workoutFinished&&!rest);
  const trainingCard=deck.daily.find(item=>item.id===state.trainingExercise);
  const canReplace=Boolean(skippedCard&&!trainingCard&&!rest&&!state.workoutFinished);
  const skipMessage=skippedCard?'Heute gestrichen: '+skippedCard.name+'.':canSkip?'Streiche eine Übung direkt auf ihrer Karte. Deine Wahl gilt bis Mitternacht.':'';
  const trainingMessage=trainingCard?'Durch Training ersetzt: '+trainingCard.name+'.':
   canReplace?'Wenn du heute trainiert hast, kannst du eine weitere Übung ersetzen.':'';
- setError('#skip-status',[skipMessage,trainingMessage].filter(Boolean).join(' '));
+ setError('#skip-status',rest?'Freier Tag eingesetzt · Deine Tagesübungen sind erfüllt und gesperrt. Schließe dein Workout wie gewohnt ab.':[skipMessage,trainingMessage].filter(Boolean).join(' '));
  $('#daily').innerHTML = deck.daily.map(source=>{
   const item={...source,name:escapeHtml(source.name)};
   const {amount=0,points=0} = amounts.get(item.id)||{};
@@ -427,14 +432,15 @@ function render() {
   return `<article class="card exercise-card ${item.color}${skipped?' skipped-exercise':''}">
    ${symbols}
    <div class="card-head"><span class="tile-icon" aria-hidden="true">${icons[item.icon]}</span><span class="points">${skipped?'Gestrichen':(replaced?exercisePoints(item,item.target):points)+' P'}</span></div>
-   ${item.id==='plank'&&!replaced?`<div class="plank-heading"><h3>${item.name}</h3>${plankStopwatch}</div>`:`<h3>${item.name}</h3>`}
+   ${item.id==='plank'&&!replaced&&!rest?`<div class="plank-heading"><h3>${item.name}</h3>${plankStopwatch}</div>`:`<h3>${item.name}</h3>`}
+   ${rest&&!skipped?'<p class="progress-label training-credit">✓ Freier Tag eingesetzt</p>':''}
    ${replaced?`<p class="progress-label training-credit">✓ Durch Training erfüllt</p><p class="hint">Volle Grundpunkte · ohne Bonus</p>`:`<dl class="daily-rates">
     <div><dt>Punkte pro ${unit}</dt><dd>${normal}</dd></div>
-    <div><dt>Bonus-Punkte pro ${unit}</dt><dd>${bonus}</dd></div>
+    <div><dt>Bonus-Punkte pro ${unit}</dt><dd>${rest?'0':bonus}</dd></div>
    </dl>
    <progress max="${item.target}" value="${Math.min(amount,item.target)}" aria-label="Tagesziel ${item.name}"></progress>
    <p class="progress-label">${displayAmount(amount,item.unit)} / ${displayAmount(item.target,item.unit)} ${actualUnit}${amount>=item.target?' · ✓':''}</p>
-   <form class="counter" data-id="${item.id}"><fieldset class="counter-fields" ${state.workoutFinished||skipped?'disabled':''}>
+   <form class="counter" data-id="${item.id}"><fieldset class="counter-fields" ${state.workoutFinished||skipped||rest?'disabled':''}>
     <button type="button" data-delta="-${item.step}" aria-label="${item.name}: ${step} ${actualUnit} abziehen">−</button>
     <input type="number" name="amount" value="${amount/scale}" min="0" max="${10000/scale}" step="${1/scale}" inputmode="${scale===1?'numeric':'decimal'}" required aria-label="${item.name}: Tagesmenge in ${actualUnit}" title="Tagesmenge eingeben und mit Enter speichern">
     <button type="button" data-delta="+${item.step}" aria-label="${item.name}: ${step} ${actualUnit} hinzufügen">+${step}</button>
@@ -466,7 +472,7 @@ function render() {
      <dd id="workout-total" ${state.workoutFinished?'':'hidden'}></dd>
     </div>
    </dl>
-   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':state.defaultSkip&&!state.skippedExercise?'Wähle zuerst eine Übung, die du heute streichst.':state.birthdayWheelUnlocked?'Dein Geburtstagsdreh ist bereits freigeschaltet.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
+   <p class="hint">${state.workoutFinished?'Deine Tageswertung ist abgeschlossen.':rest?'Freier Tag aktiv. Foto und Workout-Abschluss stehen noch aus.':state.defaultSkip&&!state.skippedExercise?'Wähle zuerst eine Übung, die du heute streichst.':state.birthdayWheelUnlocked?'Dein Geburtstagsdreh ist bereits freigeschaltet.':'Schließe das Workout ab, um das Glücksrad freizuschalten.'}</p>
    <button class="primary" id="workout-finish" type="button">${state.workoutFinished?'Abgeschlossen':'Workout abschließen'}</button>
    ${coins?.vouchers&&!rest&&!state.workoutFinished?'<button class="outline" id="workout-rest-voucher" type="button">Freien Tag für heute einlösen</button>':''}
    <p id="workout-rest-status" class="hint" role="status" hidden></p>
@@ -804,7 +810,7 @@ async function refreshMemberSummary(quiet=false){
    daily.append(item);
   }
   const status=[reached+' / '+counted+' Tagesziele erreicht'];
-  if(summary.rest) status.push('Freier Tag');
+  if(summary.rest) status.push('Freier Tag eingesetzt');
   if(summary.workoutFinished) status.push('Workout abgeschlossen');
   $('#member-summary-progress').textContent=status.join(' · ');
   const weekly=$('#member-summary-weekly');
@@ -843,6 +849,7 @@ function refreshVisibleSocial(){
   refreshRankingQuietly();
   refreshWheelActivity();
  }
+ if(currentView==='heute'||currentView==='fettstrafe') loadFoodPolls(true);
  if(memberDialog.open) refreshMemberSummary(true);
 }
 
@@ -1032,7 +1039,7 @@ async function flushQuantity(key,entry){
 
 function saveAmount(form, delta) {
  if(!state?.user){showAuth();return;}
- if(busy || state.workoutFinished) return;
+ if(busy || state.workoutFinished || state.coins?.rest) return;
  const field=form.elements.amount;
  if(!form.reportValidity()) return;
  const id=form.dataset.id;
@@ -1096,7 +1103,7 @@ skipForm.addEventListener('submit',async event=>{
 $('#daily').addEventListener('click',event=>{
  const skipButton=event.target.closest('[data-skip]');
  if(skipButton){
-  if(!state?.user||busy||state.workoutFinished) return;
+  if(!state?.user||busy||state.workoutFinished||state.coins?.rest) return;
   const training=skipButton.hasAttribute('data-training');
   if(training?(!state.skippedExercise||state.trainingExercise||state.coins?.rest):state.skippedExercise) return;
   const exercise=state.deck.daily.find(item=>item.id===skipButton.dataset.skip);
@@ -1467,10 +1474,10 @@ function coinControls(){
  $('#coin-recording').hidden=kind!=='voice';
  $('#rest-info').hidden=!rest;
  $('#prank-limit').hidden=rest;
- $('#rest-info').textContent=state.workoutFinished?'Dein Workout ist für heute abgeschlossen.':wallet.rest?'Heute ist bereits ein freier Tag.':wallet.vouchers?wallet.vouchers+' Gutschein(e) verfügbar. Beim Einlösen wird ein Gutschein genutzt.':'Du bekommst die regulären Zielpunkte. Der Tag zählt zum Monatsziel.';
- $('#coin-submit').textContent=rest?(wallet.vouchers?'Gutschein für heute einlösen':'Heute freikaufen'):'Senden';
+ $('#rest-info').textContent='Du kaufst einen Gutschein und kannst ihn an einem beliebigen Tag unter „Workout abschließen“ einlösen. Verfügbar: '+wallet.vouchers+'.';
+ $('#coin-submit').textContent=rest?'Gutschein kaufen':'Senden';
  setOptions(coinForm.elements.detail,kind==='symbol'?wallet.symbols.map((symbol,index)=>[symbol,symbol+' '+symbolNames[index]]):wallet.exercises.map(exercise=>[exercise,exercise]));
- $('#coin-submit').disabled=rest?state.workoutFinished||wallet.rest||(!wallet.vouchers&&wallet.balance<wallet.prices.rest):!wallet.friends.length||wallet.balance<wallet.prices[kind]||(kind==='voice'&&!recording);
+ $('#coin-submit').disabled=rest?wallet.balance<wallet.prices.rest:!wallet.friends.length||wallet.balance<wallet.prices[kind]||(kind==='voice'&&!recording);
 }
 function renderCoins(){
  const wallet=state.coins;
@@ -1639,7 +1646,10 @@ async function sendCoin(action,payload,statusTarget='#coin-status'){
   if(action==='buy' && payload.kind==='voice'){
    if(voiceArchive.open) loadVoiceArchive();
    setError('#coin-status','Gesendet. Die Aufnahme ist jetzt im Season-Archiv.');
-  }else setError(statusTarget,payload.kind==='rest_voucher'?'Dein freier Tag ist aktiv.':'Gespeichert.');
+  }else{
+   if(payload.kind==='rest_voucher') changeStopwatch('reset');
+   setError(statusTarget,payload.kind==='rest_voucher'?'Dein freier Tag ist aktiv.':payload.kind==='rest'?'Gutschein gekauft. Du kannst ihn später unter „Workout abschließen“ einlösen.':'Gespeichert.');
+  }
   return true;
  } catch(error){
   setError(statusTarget,error.message);
@@ -1962,6 +1972,7 @@ const foodList=$('#food-poll-list');
 let foodPollOwner;
 let pollDraft;
 let foodPollLoad=0;
+let foodPollPending;
 
 function syncFoodPolls(){
  const owner=cloudUrl?state.user?.id:undefined;
@@ -1970,6 +1981,8 @@ function syncFoodPolls(){
   foodPollOwner=owner;
   foodPollLoad++;
   foodList.replaceChildren();
+  $('#home-food-polls').hidden=true;
+  $('#home-food-poll-list').replaceChildren();
   foodForm.reset();
   pollDraft=undefined;
   setError('#food-poll-status');
@@ -1979,16 +1992,28 @@ function syncFoodPolls(){
  const selected=target.value;
  setOptions(target,[['','Bitte auswählen'],...(state.coins?.friends??[]).map(member=>[member.id,member.handle])]);
  target.value=Array.from(target.options).some(option=>option.value===selected)?selected:'';
- if(foodPanel.open) loadFoodPolls();
+ if(location.hash==='#fettstrafe') foodPanel.open=true;
+ loadFoodPolls();
 }
 
-async function loadFoodPolls(){
+async function loadFoodPolls(quiet=false){
  const owner=foodPollOwner;
- if(!owner) return;
+ if(!owner||foodPollPending===owner) return;
+ foodPollPending=owner;
  const request=++foodPollLoad;
  try{
   const polls=await api('food-polls');
   if(request!==foodPollLoad||owner!==foodPollOwner) return;
+  const open=polls.filter(poll=>poll.verdict===null&&!poll.expired);
+  const homeList=$('#home-food-poll-list');
+  homeList.replaceChildren();
+  $('#home-food-polls').hidden=!open.length;
+  for(const poll of open){
+   const entry=document.createElement('li');
+   entry.textContent=poll.targetName+' · '+(poll.canVote?'Deine Stimme fehlt':poll.myVote!==null?'Du hast abgestimmt':'Du bist nicht stimmberechtigt');
+   homeList.append(entry);
+  }
+  $('#home-food-polls-open').textContent=open.some(poll=>poll.canVote)?'Jetzt abstimmen':'Abstimmungen ansehen';
   const list=document.createDocumentFragment();
   for(const poll of polls){
    const row=document.createElement('article');
@@ -2057,7 +2082,9 @@ async function loadFoodPolls(){
   }
   foodList.replaceChildren(list);
  }catch(error){
-  if(request===foodPollLoad && owner===foodPollOwner) setError('#food-poll-status',error.message);
+  if(!quiet&&request===foodPollLoad && owner===foodPollOwner) setError('#food-poll-status',error.message);
+ }finally{
+  if(foodPollPending===owner) foodPollPending=undefined;
  }
 }
 

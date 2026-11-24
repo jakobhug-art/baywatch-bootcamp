@@ -89,6 +89,7 @@ const coins=setupCoins(db,fail);
 const rankings=setupRankings(db,{legacyCount:daily.length,monthTarget,monthBonus,rewardsStart:seasonStart(schedule().day)});
 // Apply new scoring to the open day while preserving closed days.
 const currentDay=challenges.current();
+db.prepare('UPDATE rest_days SET base_only=1 WHERE day>=?').run(currentDay.day);
 coins.transaction(()=>{
  const missing=db.prepare(`SELECT first.user_id,first.day,first.turn FROM scratch_tickets first
   WHERE first.day=? AND first.ticket=1 AND NOT EXISTS(
@@ -248,7 +249,7 @@ createServer(async (req,res)=>{
    const memberId=Number(memberPath[1]);
    const member=Number.isSafeInteger(memberId) && db.prepare('SELECT handle FROM users WHERE id=?').get(memberId);
    if(!member) fail(404,'Mitglied nicht gefunden.');
-   const amounts=new Map(db.prepare('SELECT exercise,amount FROM quantities WHERE user_id=? AND day=?')
+   const amounts=new Map(db.prepare('SELECT exercise,amount FROM effective_quantities WHERE user_id=? AND day=?')
     .all(memberId,deck.day).map(({exercise,amount})=>[exercise,amount]));
    const skipped=selectedSkip.get(memberId,deck.day)?.exercise??defaultSkip(deck);
    const training=selectedTraining.get(memberId,deck.day)?.exercise;
@@ -291,7 +292,10 @@ createServer(async (req,res)=>{
    if(!user) fail(401,'Bitte melde dich an.');
    const input=await body(req,path.endsWith('/buy')?810000:4096);
    if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
-   if(path.endsWith('/buy')) coins.buy(user.id,input,deck.day);
+   if(path.endsWith('/buy')){
+    if(input.kind==='rest_voucher'&&wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
+    coins.buy(user.id,input,deck.day);
+   }
    else coins.respond(user.id,input,deck.day);
    return reply({ok:true});
   }
@@ -406,6 +410,7 @@ createServer(async (req,res)=>{
    if(input?.day!==deck.day || schedule().day!==deck.day) fail(409,'Der Tag hat gewechselt. Lade die Seite neu.');
    if(!exercise || !Number.isInteger(input.amount) || input.amount<0 || input.amount>10000) fail(400,'Gib eine ganze Zahl zwischen 0 und 10.000 ein.');
    if(wheelResults.get(user.id,deck.day)) fail(409,'Du hast das Workout für heute abgeschlossen.');
+   if(db.prepare('SELECT 1 FROM rest_days WHERE user_id=? AND day=?').get(user.id,deck.day)) fail(409,'Deine Tagesübungen sind für den freien Tag gesperrt.');
    if(selectedTraining.get(user.id,deck.day)?.exercise===exercise.id) fail(409,'Diese Übung wurde heute durch Training ersetzt.');
    db.prepare(`
     INSERT INTO quantities VALUES(?,?,?,?,?,?)

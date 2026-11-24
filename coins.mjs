@@ -20,14 +20,19 @@ export function setupCoins(db,fail){
   CREATE TABLE IF NOT EXISTS rest_vouchers(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id),used TEXT);
   CREATE TABLE IF NOT EXISTS pranks(id INTEGER PRIMARY KEY,sender INTEGER NOT NULL REFERENCES users(id),recipient INTEGER NOT NULL REFERENCES users(id),kind TEXT NOT NULL,detail TEXT NOT NULL,day TEXT NOT NULL,expires TEXT NOT NULL,source INTEGER REFERENCES pranks(id),status TEXT NOT NULL DEFAULT 'pending',sender_done INTEGER NOT NULL DEFAULT 0,recipient_done INTEGER NOT NULL DEFAULT 0,audio BLOB);
   CREATE UNIQUE INDEX IF NOT EXISTS prank_return_once ON pranks(source) WHERE source IS NOT NULL;
+ `);
+ if(!db.prepare('PRAGMA table_info(rest_days)').all().some(column=>column.name==='base_only')){
+  db.exec('ALTER TABLE rest_days ADD COLUMN base_only INTEGER NOT NULL DEFAULT 0');
+ }
+ db.exec(`
   DROP VIEW IF EXISTS effective_quantities;
   CREATE VIEW effective_quantities AS
    WITH legacy(exercise,target,points) AS (VALUES ${daily.map(item=>`('${item.id}',${item.target},${exercisePoints(item,item.target)})`).join(',')}),
-   targets(user_id,day,exercise,target,points) AS (
-    SELECT r.user_id,r.day,item.value->>'id',item.value->>'target',COALESCE(item.value->>'goalPoints',(item.value->>'target')/(item.value->>'step'))
+   targets(user_id,day,exercise,target,points,base_only) AS (
+    SELECT r.user_id,r.day,item.value->>'id',item.value->>'target',COALESCE(item.value->>'goalPoints',(item.value->>'target')/(item.value->>'step')),r.base_only
     FROM rest_days r JOIN challenge_periods p ON p.period=r.day AND p.kind='daily' JOIN json_each(p.data) item
     UNION ALL
-    SELECT r.user_id,r.day,l.* FROM rest_days r CROSS JOIN legacy l
+    SELECT r.user_id,r.day,l.*,r.base_only FROM rest_days r CROSS JOIN legacy l
     WHERE NOT EXISTS(SELECT 1 FROM challenge_periods p WHERE p.period=r.day AND p.kind='daily')
    ), training(user_id,day,exercise,target,points) AS (
     SELECT t.user_id,t.day,t.exercise,item.value->>'target',
@@ -38,7 +43,9 @@ export function setupCoins(db,fail){
     SELECT q.* FROM quantities q WHERE NOT EXISTS(SELECT 1 FROM rest_days r WHERE r.user_id=q.user_id AND r.day=q.day)
      AND NOT EXISTS(SELECT 1 FROM training_replacements t WHERE t.user_id=q.user_id AND t.day=q.day AND t.exercise=q.exercise)
     UNION ALL
-    SELECT t.user_id,t.day,t.exercise,MAX(t.target,COALESCE(q.amount,0)),MAX(t.points,COALESCE(q.points,0)),1
+    SELECT t.user_id,t.day,t.exercise,
+     CASE WHEN t.base_only THEN t.target ELSE MAX(t.target,COALESCE(q.amount,0)) END,
+     CASE WHEN t.base_only THEN t.points ELSE MAX(t.points,COALESCE(q.points,0)) END,1
     FROM targets t LEFT JOIN quantities q ON q.user_id=t.user_id AND q.day=t.day AND q.exercise=t.exercise
     WHERE NOT EXISTS(SELECT 1 FROM training_replacements r WHERE r.user_id=t.user_id AND r.day=t.day AND r.exercise=t.exercise)
     UNION ALL
@@ -50,7 +57,7 @@ export function setupCoins(db,fail){
  `);
  const balance=db.prepare('SELECT COALESCE(SUM(amount),0) AS amount FROM coin_entries WHERE user_id=?');
  const credit=db.prepare('INSERT INTO coin_entries(user_id,amount,label,day) VALUES(?,?,?,?)');
- const rest=db.prepare('INSERT OR IGNORE INTO rest_days VALUES(?,?)');
+ const rest=db.prepare('INSERT OR IGNORE INTO rest_days(user_id,day,base_only) VALUES(?,?,1)');
  const hasRest=db.prepare('SELECT 1 FROM rest_days WHERE user_id=? AND day=?');
  const grantRest=db.prepare('INSERT INTO rest_vouchers(user_id) VALUES(?)');
  const vouchers=db.prepare('SELECT id FROM rest_vouchers WHERE user_id=? AND used IS NULL ORDER BY id');
@@ -80,14 +87,23 @@ export function setupCoins(db,fail){
  }
  function buy(user,input,day){
   const kind=input?.kind;
-  if(!Object.hasOwn(prices,kind)) fail(400,'Wähle eine Aktion.');
+  if(!Object.hasOwn(prices,kind)&&kind!=='rest_voucher') fail(400,'Wähle eine Aktion.');
   return transaction(()=>{
    if(kind==='rest'){
+    if(balance.get(user).amount<prices.rest) fail(409,'Du hast nicht genug Münzen.');
+    grantRest.run(user);
+    credit.run(user,-prices.rest,'Gutschein für einen freien Tag',day);
+    return;
+   }
+   if(kind==='rest_voucher'){
     const voucher=vouchers.get(user);
-    if(!voucher&&balance.get(user).amount<prices.rest) fail(409,'Du hast nicht genug Münzen.');
+    if(!voucher) fail(409,'Du hast keinen freien Tag zum Einlösen.');
+    const cards=JSON.parse(db.prepare("SELECT data FROM challenge_periods WHERE kind='daily' AND period=?").get(day)?.data??'[]');
+    if(cards.length>1&&cards.some(card=>card.id==='jogging')){
+     db.prepare('INSERT OR IGNORE INTO daily_skips VALUES(?,?,?)').run(user,day,'jogging');
+    }
     if(!rest.run(user,day).changes) fail(409,'Heute ist bereits ein freier Tag.');
-    if(voucher) db.prepare('UPDATE rest_vouchers SET used=? WHERE id=?').run(day,voucher.id);
-    else credit.run(user,-prices.rest,'Freier Tag',day);
+    db.prepare('UPDATE rest_vouchers SET used=? WHERE id=?').run(day,voucher.id);
     return;
    }
    if(balance.get(user).amount<prices[kind]) fail(409,'Du hast nicht genug Münzen.');

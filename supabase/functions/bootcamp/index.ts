@@ -287,6 +287,10 @@ Deno.serve(async (request) => {
           p_morning: input.morningReminder, p_evening: input.eveningReminder, p_friends: input.friendNotifications };
         if ("chatNotifications" in input) {
           if (typeof input.chatNotifications !== "boolean") return json({ error: "Prüfe deine Einstellungen." }, 400);
+          if ("foodNotifications" in input) {
+            if (typeof input.foodNotifications !== "boolean") return json({ error: "Prüfe deine Einstellungen." }, 400);
+            return rpc("bootcamp_save_food_push_profile", { ...settings, p_chat: input.chatNotifications, p_food: input.foodNotifications });
+          }
           return rpc("bootcamp_save_chat_push_profile", { ...settings, p_chat: input.chatNotifications });
         }
         return rpc("bootcamp_save_fixed_push_profile", settings);
