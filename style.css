@@ -387,6 +387,9 @@ form .challenge-enabled input{width:auto}
 .food-poll{padding:12px 4px;border-top:1px solid var(--line)}
 .food-poll p{margin:5px 0}
 .food-poll-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.food-poll-ballots{list-style:none;padding:0;margin:12px 0}
+.food-poll-ballots li{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;padding:3px 0;overflow-wrap:anywhere}
+.food-poll-ballots strong{font-size:13px;color:var(--muted)}
 @media(max-width:650px){
  .daily:has(.workout-card){grid-template-columns:repeat(2,minmax(0,1fr))}
  .exercise-card progress{margin-top:auto}

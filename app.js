@@ -2044,6 +2044,22 @@ async function loadFoodPolls(quiet=false){
    const meta=document.createElement('p');
    meta.textContent='Gemeldet von '+poll.reporterName+' · '+dateFormat.format(new Date(poll.createdAt));
    row.append(title,meta,result);
+   if(poll.ballots?.length){
+    const ballots=document.createElement('ul');
+    ballots.className='food-poll-ballots';
+    ballots.setAttribute('aria-label','Stimmen der Mitglieder');
+    for(const ballot of poll.ballots){
+     const entry=document.createElement('li');
+     const name=document.createElement('span');
+     name.textContent=ballot.name;
+     const vote=document.createElement('strong');
+     vote.textContent=ballot.guilty===true?'Schuldig':ballot.guilty===false?'Nicht schuldig':
+      poll.verdict===null&&!poll.expired?'Noch offen':'Nicht abgestimmt';
+     entry.append(name,vote);
+     ballots.append(entry);
+    }
+    row.append(ballots);
+   }
    const actions=document.createElement('div');
    actions.className='food-poll-actions';
    if(poll.hasPhoto){
