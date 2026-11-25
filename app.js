@@ -1883,20 +1883,25 @@ $('#points-reset').addEventListener('submit',async event=>{
 const memberAdminForm=$('#member-admin-form');
 let memberAdminRetry;
 memberAdminForm.elements.kind.addEventListener('change',()=>{
- const reset=memberAdminForm.elements.kind.value==='reset-pranks';
- $('#member-coin-fields').disabled=reset;
- $('#member-coin-fields').hidden=reset;
+ const kind=memberAdminForm.elements.kind.value;
+ const reset=kind==='reset-pranks';
+ const gift=kind==='rest-voucher';
+ $('#member-coin-fields').disabled=reset||gift;
+ $('#member-coin-fields').hidden=reset||gift;
  $('#member-reset-info').hidden=!reset;
+ $('#member-rest-info').hidden=!gift;
+ memberAdminForm.querySelector('button').textContent=gift?'Freien Tag schenken':'Ausführen';
 });
 memberAdminForm.addEventListener('submit',async event=>{
  event.preventDefault();
  if(!state?.user?.admin||busy) return;
  const {member,kind,amount,reason}=memberAdminForm.elements;
  const reset=kind.value==='reset-pranks';
+ const gift=kind.value==='rest-voucher';
  const handle=member.selectedOptions[0]?.textContent;
  if(reset && !window.confirm('Alle gesendeten und empfangenen Pranks von '+handle+' zurücksetzen?')) return;
- const payload={member:member.value,kind:reset?'reset-pranks':'coins',
-  delta:reset?null:amount.valueAsNumber*(kind.value==='take'?-1:1),reason:reset?null:reason.value.trim()};
+ const payload={member:member.value,kind:reset||gift?kind.value:'coins',
+  delta:reset||gift?null:amount.valueAsNumber*(kind.value==='take'?-1:1),reason:reset||gift?null:reason.value.trim()};
  const signature=JSON.stringify(payload);
  if(memberAdminRetry?.signature!==signature) memberAdminRetry={signature,requestId:crypto.randomUUID()};
  busy=true;
@@ -1907,6 +1912,7 @@ memberAdminForm.addEventListener('submit',async event=>{
   const result=await api('admin/members',{...payload,requestId:memberAdminRetry.requestId});
   if(!result.audioCleanupPending) memberAdminRetry=undefined;
   const message=reset?handle+' · '+result.removed+' Pranks zurückgesetzt.'
+   :gift?handle+' hat einen freien Tag geschenkt bekommen. Verfügbare Gutscheine: '+result.vouchers+'.'
    :handle+' · Neuer Kontostand '+result.balance+' Münzen.';
   setError('#member-admin-status',message+(result.audioCleanupPending?' Das Entfernen der Audiodateien kann erneut versucht werden.':''));
   await refresh().catch(error=>setError('#notice',error.message));
